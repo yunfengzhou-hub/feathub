@@ -25,6 +25,7 @@ from testcontainers.kafka import KafkaContainer
 from feathub.common.types import Int64, String
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_tables.sinks.kafka_sink import KafkaSink
+from feathub.feature_tables.sources.online_store_source import OnlineStoreSource
 from feathub.feature_tables.sources.kafka_source import KafkaSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.processors.flink.table_builder.source_sink_utils import (
@@ -35,6 +36,7 @@ from feathub.processors.flink.table_builder.tests.table_builder_test_base import
     FlinkTableBuilderTestBase,
 )
 from feathub.table.schema import Schema
+from feathub.table.table_descriptor import TableDescriptor
 
 
 class SourceUtilsTest(FlinkTableBuilderTestBase):
@@ -145,7 +147,11 @@ class SinkUtilTest(FlinkTableBuilderTestBase):
         with patch.object(
             self.t_env, "create_temporary_table"
         ) as create_temporary_table, patch.object(table, "execute_insert"):
-            insert_into_sink(self.t_env, table, sink, ("id",))
+
+            placeholder_descriptor: TableDescriptor = OnlineStoreSource(
+                "kafka_sink", ["id"], "memory", "table_name_1"
+            )
+            insert_into_sink(self.t_env, table, placeholder_descriptor, sink)
             flink_table_descriptor: NativeFlinkTableDescriptor = (
                 create_temporary_table.call_args[0][1]
             )
@@ -273,5 +279,10 @@ class SourceSinkITTest(FlinkTableBuilderTestBase):
             key_format="json",
             value_format="json",
         )
-        insert_into_sink(t_env, table, sink, ("id",)).wait()
+
+        placeholder_descriptor: TableDescriptor = OnlineStoreSource(
+            "kafka_sink", ["id"], "memory", "table_name_1"
+        )
+
+        insert_into_sink(t_env, table, placeholder_descriptor, sink).wait()
         return row_data
