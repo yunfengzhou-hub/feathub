@@ -36,6 +36,7 @@ from feathub.processors.flink.table_builder.flink_table_builder import FlinkTabl
 from feathub.processors.flink.table_builder.source_sink_utils import (
     insert_into_sink,
 )
+from feathub.processors.flink.table_builder.tests.table_builder_test_base import FlinkTableBuilderTestBase
 from feathub.registries.local_registry import LocalRegistry
 from feathub.table.schema import Schema
 from feathub.table.table_descriptor import TableDescriptor
@@ -80,7 +81,7 @@ class SinkUtilTest(unittest.TestCase):
             )
 
 
-class SourceSinkITTest(unittest.TestCase):
+class SourceSinkITTest(FlinkTableBuilderTestBase):
     kafka_container: KafkaContainer = None
     redis_container: RedisContainer = None
 
@@ -113,83 +114,19 @@ class SourceSinkITTest(unittest.TestCase):
 
         self.env = StreamExecutionEnvironment.get_execution_environment()
         self.t_env = StreamTableEnvironment.create(self.env)
-        self.test_time = datetime.now()
-
-        self.row_data = self._produce_data_to_kafka(self.t_env)
 
     def test_redis_sink(self):
-        table_builder = FlinkTableBuilder(self.t_env, LocalRegistry({}))
-        # Consume data with kafka source
-        source = KafkaSource(
-            "kafka_source",
-            bootstrap_server=self.kafka_bootstrap_servers,
-            topic=self.kafka_topic_name,
-            key_format="json",
-            value_format="json",
-            schema=Schema(["id", "val", "ts"], [Int64, Int64, String]),
-            consumer_group="test-group",
-            keys=["id"],
-            timestamp_field="ts",
-            timestamp_format="%Y-%m-%d %H:%M:%S",
-            startup_mode="timestamp",
-            startup_datetime=self.test_time,
-            is_bounded=True,
+        placeholder_descriptor: TableDescriptor = OnlineStoreSource(
+            "placeholder", ["id"], "memory", "table_name_1"
         )
 
-        table = table_builder.build(source)
-
-        sink = RedisSink(
-            namespace="test_namespace",
-            host=self.host,
-            port=int(self.port),
-        )
-
-        insert_into_sink(self.t_env, table, source, sink).wait(30000)
-
-        redis_client = self.redis_container.get_client()
-        self.assertEquals(len(redis_client.keys("*")), len(self.row_data))
-
-        for i in range(len(self.row_data)):
-            key = b"test_namespace:" + serialize_object_with_protobuf(
-                self.row_data[i][0], Int64
-            )
-
-            if i != 3:
-                self.assertEquals(
-                    {
-                        int(0).to_bytes(
-                            4, byteorder="big"
-                        ): serialize_object_with_protobuf(i + 1, Int64),
-                        b"__timestamp__": int(
-                            to_unix_timestamp(
-                                datetime(2022, 1, 1, 0, 0, i),
-                                format="%Y-%m-%d %H:%M:%S",
-                            )
-                        ).to_bytes(8, byteorder="big"),
-                    },
-                    redis_client.hgetall(key.decode("utf-8")),
-                )
-            else:
-                self.assertEquals(
-                    {
-                        b"__timestamp__": int(
-                            to_unix_timestamp(
-                                datetime(2022, 1, 1, 0, 0, i),
-                                format="%Y-%m-%d %H:%M:%S",
-                            )
-                        ).to_bytes(8, byteorder="big"),
-                    },
-                    redis_client.hgetall(key.decode("utf-8")),
-                )
-
-    def _produce_data_to_kafka(self, t_env):
         row_data = [
             (1, 1, datetime(2022, 1, 1, 0, 0, 0).strftime("%Y-%m-%d %H:%M:%S")),
             (2, 2, datetime(2022, 1, 1, 0, 0, 1).strftime("%Y-%m-%d %H:%M:%S")),
             (3, 3, datetime(2022, 1, 1, 0, 0, 2).strftime("%Y-%m-%d %H:%M:%S")),
             (4, None, datetime(2022, 1, 1, 0, 0, 3).strftime("%Y-%m-%d %H:%M:%S")),
         ]
-        table = t_env.from_elements(
+        table = self.t_env.from_elements(
             row_data,
             DataTypes.ROW(
                 [
@@ -199,16 +136,11 @@ class SourceSinkITTest(unittest.TestCase):
                 ]
             ),
         )
-        sink = KafkaSink(
-            bootstrap_server=self.kafka_bootstrap_servers,
-            topic=self.kafka_topic_name,
-            key_format="json",
-            value_format="json",
+
+        sink = RedisSink(
+            namespace="test_namespace",
+            host=self.host,
+            port=int(self.port),
         )
 
-        placeholder_descriptor: TableDescriptor = OnlineStoreSource(
-            "placeholder", ["id"], "memory", "table_name_1"
-        )
-
-        insert_into_sink(t_env, table, placeholder_descriptor, sink).wait()
-        return row_data
+        insert_into_sink(self.t_env, table, placeholder_descriptor, sink).wait(30000)
