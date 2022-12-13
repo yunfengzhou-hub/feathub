@@ -11,13 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-setuptools>=18.0
-wheel
-black>=22.3.0
-autopep8>=1.6.0
-pytest==4.4.1
-flake8==4.0.1
-mypy==0.971
-testcontainers[kafka,redis]~=3.7.0
-protobuf~=3.20.3

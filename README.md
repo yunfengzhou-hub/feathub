@@ -177,10 +177,25 @@ f_lower_case_name = Feature(
 
 ## Developer Guidelines
 
-### Install Development Dependencies
+### Installing Development Dependencies
 
 ```bash
 $ python -m pip install -r python/dev-requirements.txt
+```
+
+### Generating code from Protocol Buffers files
+
+Make sure you have installed Protocol Buffers compiler 3.20.x in your local
+environment. You may refer to [Protocol Buffers'
+README](https://github.com/protocolbuffers/protobuf#protocol-compiler-installation)
+for installation guidelines. 
+
+After that, execute the following commands under Feathub's root folder to
+generate the required python file.
+
+```bash
+$ FEATHUB_HOME=`pwd`
+$ protoc -I=${FEATHUB_HOME}/python/feathub/common/protobuf/ --python_out=${FEATHUB_HOME}/python/feathub/common/protobuf/ featureValue.proto
 ```
 
 ### Running All Tests
