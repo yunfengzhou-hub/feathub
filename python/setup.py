@@ -122,6 +122,17 @@ try:
         include_package_data=True,
         package_dir=PACKAGE_DIR,
         package_data=PACKAGE_DATA,
+        options={
+            "generate_py_protobufs": {
+                "source_dir": this_directory,
+                "output_dir": this_directory,
+                "proto_files": [
+                    os.path.join(
+                        this_directory, "./feathub/common/protobuf/value.proto"
+                    )
+                ],
+            },
+        },
         license="https://www.apache.org/licenses/LICENSE-2.0",
         author="Feathub Authors",
         python_requires=">=3.6",

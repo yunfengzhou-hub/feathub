@@ -198,17 +198,25 @@ $ docker image pull confluentinc/cp-kafka:5.4.3
 $ ulimit -n 1024
 ```
 
-### Building Feathub Project
-
-1. Use the following command to generate protobuf files. You can follow this
+4. Make sure protoc 3.17 is installed in your development environment. You can
+   follow this
    [README](https://github.com/protocolbuffers/protobuf#protocol-compiler-installation)
    to install protoc.
 
 ```bash
-$ protoc -I=python/feathub/common/protobuf/ --python_out=python/feathub/common/protobuf/ value.proto
+$ protoc --version
+# This command should return 3.17.x
 ```
 
-2. Use the following command to build Java and Python libraries.
+### Building Feathub Project
+
+1. Use the following command to generate protobuf files.
+
+```bash
+$ python python/setup.py generate_py_protobufs
+```
+
+2. Use the following commands to build Java and Python libraries.
 
 ```bash
 $ mvn clean package -DskipTests -f ./java

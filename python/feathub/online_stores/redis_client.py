@@ -42,7 +42,14 @@ class RedisClient(OnlineStoreClient):
         timestamp_field: Optional[str] = None,
     ):
         super().__init__()
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.db_num = db_num
         self.namespace = namespace
+
+        self.redis_client: redis.Redis = None
 
         self.key_names = keys
         self.key_types = [schema.get_field_type(x) for x in self.key_names]
@@ -58,18 +65,19 @@ class RedisClient(OnlineStoreClient):
                 4, byteorder="big"
             )
 
-        self.redis_client = redis.Redis(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            decode_responses=False,
-        )
-        self.redis_client.select(db_num)
-
     def get(
         self, input_data: pd.DataFrame, feature_names: Optional[List[str]] = None
     ) -> pd.DataFrame:
+        if self.redis_client is None:
+            self.redis_client = redis.Redis(
+                host=self.host,
+                port=self.port,
+                username=self.username,
+                password=self.password,
+                decode_responses=False,
+            )
+            self.redis_client.select(self.db_num)
+
         if not set(self.key_names) <= set(input_data.columns.values):
             raise RuntimeError(
                 f"Input dataframe's column names {input_data.columns.values} "
@@ -100,3 +108,6 @@ class RedisClient(OnlineStoreClient):
         features = pd.DataFrame(results_list, columns=feature_names)
         features = input_data.join(features)
         return features
+
+    def __del__(self) -> None:
+        self.redis_client.close()
