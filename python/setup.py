@@ -122,6 +122,7 @@ try:
         include_package_data=True,
         package_dir=PACKAGE_DIR,
         package_data=PACKAGE_DATA,
+        setup_requires=['protobuf_distutils'],
         options={
             "generate_py_protobufs": {
                 "source_dir": this_directory,
