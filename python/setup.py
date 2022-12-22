@@ -125,13 +125,12 @@ try:
         setup_requires=['protobuf_distutils'],
         options={
             "generate_py_protobufs": {
-                "source_dir": this_directory,
-                "output_dir": this_directory,
-                "proto_files": [
-                    os.path.join(
-                        this_directory, "./feathub/common/protobuf/value.proto"
-                    )
-                ],
+                "source_dir": os.path.join(
+                        this_directory, "feathub/common/protobuf"
+                    ),
+                "output_dir": os.path.join(
+                        this_directory, "feathub/common/protobuf"
+                    ),
             },
         },
         license="https://www.apache.org/licenses/LICENSE-2.0",
