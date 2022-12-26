@@ -12,9 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
+import subprocess
 import sys
 from datetime import datetime
-from shutil import rmtree, copytree
+from shutil import rmtree, copytree, which
 
 from setuptools import setup, find_packages
 from setuptools.command.build import build
@@ -34,6 +35,17 @@ class BuildCommand(build):
         self.run_command('generate_py_protobufs')
         return super().run()
 
+
+# check protoc command and version
+if not which("protoc"):
+    print('Please make sure protoc 3.17 is installed in the local environment.')
+    sys.exit(-1)
+
+protoc_version = subprocess.check_output(['protoc', '--version'], stderr=subprocess.STDOUT)
+if not protoc_version.startswith(b'libprotoc 3.17'):
+    print(f'protoc \'{protoc_version}\' is installed in the local environment, '
+          f'while Feathub has only been verified with protoc 3.17.x.')
+    sys.exit(-1)
 
 # clear setup cache directories
 remove_if_exists("build")
