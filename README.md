@@ -210,14 +210,6 @@ $ protoc --version
 
 ### Building Feathub Project
 
-1. Use the following command to generate protobuf files.
-
-```bash
-$ python python/setup.py generate_py_protobufs
-```
-
-2. Use the following commands to build Java and Python libraries.
-
 ```bash
 $ mvn clean package -DskipTests -f ./java
 $ python -m pip install ./python

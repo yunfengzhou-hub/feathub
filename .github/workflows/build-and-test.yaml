@@ -47,8 +47,6 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
 
           python -m pip install -r python/dev-requirements.txt
-
-          python python/setup.py generate_py_protobufs
           python -m pip install ./python
           
           # Re-install black here because its pip dependency conflicts with

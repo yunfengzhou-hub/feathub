@@ -17,6 +17,7 @@ from datetime import datetime
 from shutil import rmtree, copytree
 
 from setuptools import setup, find_packages
+from setuptools.command.build import build
 
 
 def remove_if_exists(file_path):
@@ -26,6 +27,12 @@ def remove_if_exists(file_path):
         else:
             assert os.path.isdir(file_path)
             rmtree(file_path)
+
+
+class BuildCommand(build):
+    def run(self):
+        self.run_command('generate_py_protobufs')
+        return super().run()
 
 
 # clear setup cache directories
@@ -123,6 +130,9 @@ try:
         package_dir=PACKAGE_DIR,
         package_data=PACKAGE_DATA,
         setup_requires=['protobuf_distutils'],
+        cmdclass={
+            'build': BuildCommand,
+        },
         options={
             "generate_py_protobufs": {
                 "source_dir": os.path.join(
