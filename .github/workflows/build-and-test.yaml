@@ -48,6 +48,8 @@ jobs:
 
           python -m pip install -r python/dev-requirements.txt
           python -m pip install ./python
+          python -m pip install ./python[flink]
+          python -m pip install ./python[spark]
           
           # Re-install black here because its pip dependency conflicts with
           # apache-flink 1.15.2.

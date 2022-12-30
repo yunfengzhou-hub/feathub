@@ -30,6 +30,14 @@ python -m pip install ./wheels/*
 echo "Running local processor quickstart."
 python python/feathub/examples/nyc_taxi.py
 
+wheel_files=`ls ./wheels/*`
+echo "wheel_files"
+echo ${wheel_files}
+wheel_file=${wheel_files[0]}
+echo "wheel_file"
+echo ${wheel_file}
+python -m pip install "${wheel_file}[flink]"
+
 echo "Downloading Flink."
 curl -LO https://archive.apache.org/dist/flink/flink-"${FLINK_VERSION}"/flink-"${FLINK_VERSION}"-bin-scala_2.12.tgz
 tar -xzf flink-"${FLINK_VERSION}"-bin-scala_2.12.tgz
@@ -59,3 +67,5 @@ done
 
 echo "Stopping standalone Flink cluster."
 ./flink-"${FLINK_VERSION}"/bin/stop-cluster.sh
+
+# TODO: Add execution for Spark processor quickstart
