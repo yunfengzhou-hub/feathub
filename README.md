@@ -56,6 +56,16 @@ Run the following command to install preview(nightly) version of Feathub.
 $ python -m pip install --upgrade feathub-nightly
 ```
 
+If you are using processors other than local processor, run any of the following
+commands to install the corresponding extra requirements.
+```bash
+# Install dependencies for Flink processor
+$ python -m pip install --upgrade "feathub-nightly[flink]"
+
+# Install dependencies for Spark processor
+$ python -m pip install --upgrade "feathub-nightly[spark]"
+```
+
 #### Install From Source
 Run the following command to install Feathub from source.
 ```bash
@@ -73,6 +83,7 @@ engine. Here is a list of supported processors and versions:
 
 - Local
 - Flink 1.15.2
+- Spark 3.3.1
 
 ### Quickstart
 
@@ -93,6 +104,7 @@ Flink cluster, you can see the following quickstart with different deployment mo
 - [Flink Processor Session Mode Quickstart](docs/quickstarts/flink_processor_session_quickstart.md)
 - [Flink Processor Cli Mode Quickstart](docs/quickstarts/flink_processor_cli_quickstart.md)
 
+<!-- TODO: add nyc_example and quickstart document for Spark processor -->
 
 ## Highlighted Capabilities
 
@@ -208,6 +220,8 @@ $ ulimit -n 1024
 ```bash
 $ mvn clean package -DskipTests -f ./java
 $ python -m pip install ./python
+$ python -m pip install "./python[flink]"
+$ python -m pip install "./python[spark]"
 ```
 
 ### Running All Python Tests
@@ -243,6 +257,7 @@ Here is a list of key features that we plan to support. Stay tuned!
 
 - [x] Support all FeatureView transformations with FlinkProcessor
 - [ ] Support all FeatureView transformations with LocalProcessor
+- [ ] Support all FeatureView transformations with SparkProcessor
 - [ ] Support common online and offline feature storages (e.g. MaxCompute, Redis, HDFS)
 - [ ] Support online transformation with feature service
 - [ ] Support integration with Notebook
