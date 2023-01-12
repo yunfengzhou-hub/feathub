@@ -11,41 +11,39 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-from datetime import datetime, timedelta
+from abc import abstractmethod
+from datetime import datetime
 
 import pandas as pd
 
 from feathub.common.exceptions import FeathubException
-from feathub.common.types import Int64, Float64
+from feathub.common.types import Float64
+from feathub.feathub_client import FeathubClient
+from feathub.feature_tables.sources.memory_store_source import MemoryStoreSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.feature_views.transforms.over_window_transform import OverWindowTransform
-from feathub.processors.flink.table_builder.tests.table_builder_test_utils import (
-    FlinkTableBuilderTestBase,
-)
-from feathub.feature_tables.sources.memory_store_source import MemoryStoreSource
+from feathub.processors.tests.processor_test_base import ProcessorTestBase
 
 
 def _to_timestamp(datetime_str):
     return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
 
 
-class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
+class GetFeaturesTestBase(ProcessorTestBase):
+    """
+    Base class that provides test cases to verify FeathubClient#get_features in
+    different situations.
+    """
+
+    __test__ = False
+
+    @abstractmethod
+    def get_client(self) -> FeathubClient:
+        pass
+
     def test_get_table_from_file_source(self):
         source = self._create_file_source(self.input_data.copy())
-        table = self.flink_table_builder.build(features=source)
+        table = self.client.get_features(features=source)
         df = table.to_pandas()
         self.assertTrue(self.input_data.equals(df))
 
@@ -60,7 +58,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
             columns=["name"],
         )
         result_df = (
-            self.flink_table_builder.build(features=source, keys=keys)
+            self.client.get_features(features=source, keys=keys)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -93,7 +91,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
             columns=["name", "cost"],
         )
         result_df = (
-            self.flink_table_builder.build(features=source, keys=keys)
+            self.client.get_features(features=source, keys=keys)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -125,7 +123,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         )
 
         with self.assertRaises(FeathubException):
-            self.flink_table_builder.build(features=source, keys=keys)
+            self.client.get_features(features=source, keys=keys).to_pandas()
 
     def test_get_table_with_start_datetime(self):
         df = self.input_data.copy()
@@ -133,9 +131,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         start_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
-            self.flink_table_builder.build(
-                features=source, start_datetime=start_datetime
-            )
+            self.client.get_features(features=source, start_datetime=start_datetime)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -161,7 +157,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         end_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
-            self.flink_table_builder.build(features=source, end_datetime=end_datetime)
+            self.client.get_features(features=source, end_datetime=end_datetime)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -186,18 +182,20 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         _datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
 
         with self.assertRaises(FeathubException):
-            self.flink_table_builder.build(
+            self.client.get_features(
                 features=source, end_datetime=_datetime
             ).to_pandas()
 
         with self.assertRaises(FeathubException):
-            self.flink_table_builder.build(
+            self.client.get_features(
                 features=source, start_datetime=_datetime
             ).to_pandas()
 
     def test_get_table_with_unsupported_feature_view(self):
         with self.assertRaises(FeathubException):
-            self.flink_table_builder.build(MemoryStoreSource("table", ["a"], "table"))
+            self.client.get_features(
+                MemoryStoreSource("table", ["a"], "table")
+            ).to_pandas()
 
     def test_keep_source(self):
         df = self.input_data.copy()
@@ -223,7 +221,7 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         )
 
         result_df = (
-            self.flink_table_builder.build(feature_view)
+            self.client.get_features(feature_view)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -236,56 +234,4 @@ class FlinkTableBuilderTest(FlinkTableBuilderTestBase):
         expected_result_df["cost_per_mile_2"] = expected_result_df.apply(
             lambda row: row["cost"] / row["distance"] + 5, axis=1
         )
-        self.assertTrue(expected_result_df.equals(result_df))
-
-    def test_with_multiple_feature_views(self):
-        df_1 = self.input_data.copy()
-        source = self._create_file_source(df_1)
-
-        feature_view_1 = DerivedFeatureView(
-            name="feature_view_1",
-            source=source,
-            features=[
-                Feature(
-                    "avg_cost",
-                    dtype=Float64,
-                    transform=OverWindowTransform(
-                        expr="cost",
-                        agg_func="AVG",
-                        group_by_keys=["name"],
-                        window_size=timedelta(days=2),
-                    ),
-                ),
-                Feature("10_times_cost", dtype=Int64, transform="10 * cost"),
-            ],
-            keep_source_fields=True,
-        )
-
-        feature_view_2 = DerivedFeatureView(
-            name="feature_view_2",
-            source=feature_view_1,
-            features=["avg_cost", "10_times_cost"],
-        )
-
-        self.registry.build_features([feature_view_1, feature_view_2])
-
-        expected_result_df = df_1
-        expected_result_df["avg_cost"] = pd.Series(
-            [100.0, 400.0, 200.0, 300.0, 500.0, 450.0]
-        )
-        expected_result_df["10_times_cost"] = pd.Series(
-            [1000, 4000, 3000, 2000, 5000, 6000]
-        )
-        expected_result_df.drop(["cost", "distance"], axis=1, inplace=True)
-        expected_result_df = expected_result_df.sort_values(
-            by=["name", "time"]
-        ).reset_index(drop=True)
-
-        result_df = (
-            self.flink_table_builder.build(self.registry.get_features("feature_view_2"))
-            .to_pandas()
-            .sort_values(by=["name", "time"])
-            .reset_index(drop=True)
-        )
-
         self.assertTrue(expected_result_df.equals(result_df))

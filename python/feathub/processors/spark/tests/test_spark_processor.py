@@ -16,27 +16,45 @@ import tempfile
 
 import pandas as pd
 
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
-from feathub.processors.spark.spark_processor import SparkProcessor
-from feathub.processors.spark.tests.spark_test_utils import SparkProcessorTestBase
+from feathub.processors.tests.expression_transform_test_base import (
+    ExpressionTransformTestBase,
+)
+from feathub.processors.tests.file_system_source_sink_test_base import (
+    FileSystemSourceSinkTestBase,
+)
+from feathub.processors.tests.print_sink_test_base import PrintSinkTestBase
 
 
-class SparkProcessorTest(SparkProcessorTestBase):
-    def test_materialize_features(self) -> None:
-        processor = SparkProcessor(
-            props={"processor.spark.master": "local[1]"},
-            registry=self.registry,
+class SparkProcessorTest(
+    ExpressionTransformTestBase,
+    FileSystemSourceSinkTestBase,
+    PrintSinkTestBase,
+):
+    __test__ = True
+
+    def get_client(self) -> FeathubClient:
+        return self._get_local_client(
+            {
+                "type": "spark",
+                "spark": {
+                    "master": "local[1]",
+                },
+            }
         )
 
-        source = self._create_file_source(self.input_data, schema=self.schema)
+    def test_file_system_source_sink(self) -> None:
+        source = self._create_file_source(self.input_data)
 
         sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
 
         sink = FileSystemSink(sink_path, "csv")
 
-        processor.materialize_features(
+        self.client.materialize_features(
             features=source,
             sink=sink,
+            allow_overwrite=True,
         ).wait()
 
         files = glob.glob(f"{sink_path}/*.csv")

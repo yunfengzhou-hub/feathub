@@ -11,24 +11,121 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from abc import abstractmethod
 from datetime import timedelta
-from math import sqrt
 
 import pandas as pd
 
-from feathub.common.types import Int64, String, Float64, MapType
+from feathub.common.types import Float64, Int64, String, MapType
+from feathub.feathub_client import FeathubClient
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.over_window_transform import OverWindowTransform
-from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
-from feathub.processors.flink.flink_table import flink_table_to_pandas
-from feathub.processors.flink.table_builder.tests.table_builder_test_utils import (
-    FlinkTableBuilderTestBase,
-)
+from feathub.processors.tests.processor_test_base import ProcessorTestBase
 from feathub.table.schema import Schema
 
 
-class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
+class OverWindowTransformTestBase(ProcessorTestBase):
+    """
+    Base class that provides test cases to verify OverWindowTransform.
+    """
+
+    __test__ = False
+
+    @abstractmethod
+    def get_client(self) -> FeathubClient:
+        pass
+
+    def test_over_window_transform(self):
+        df = self.input_data.copy()
+        source = self._create_file_source(df)
+
+        f_cost_per_mile = Feature(
+            name="cost_per_mile",
+            dtype=Float64,
+            transform="CAST(cost AS DOUBLE) / CAST(distance AS DOUBLE) + 10",
+        )
+
+        f_total_cost = Feature(
+            name="total_cost",
+            dtype=Int64,
+            transform=OverWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+            ),
+        )
+        f_avg_cost = Feature(
+            name="avg_cost",
+            dtype=Float64,
+            transform=OverWindowTransform(
+                expr="cost",
+                agg_func="AVG",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+            ),
+        )
+        f_max_cost = Feature(
+            name="max_cost",
+            dtype=Int64,
+            transform=OverWindowTransform(
+                expr="cost",
+                agg_func="MAX",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+            ),
+        )
+        f_min_cost = Feature(
+            name="min_cost",
+            dtype=Int64,
+            transform=OverWindowTransform(
+                expr="cost",
+                agg_func="MIN",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+            ),
+        )
+
+        features = DerivedFeatureView(
+            name="feature_view",
+            source=source,
+            features=[
+                f_cost_per_mile,
+                f_total_cost,
+                f_avg_cost,
+                f_max_cost,
+                f_min_cost,
+            ],
+            keep_source_fields=False,
+        )
+
+        result_df = (
+            self.client.get_features(features=features)
+            .to_pandas()
+            .sort_values(by=["name", "time"])
+            .reset_index(drop=True)
+        )
+
+        expected_result_df = df
+        expected_result_df["cost_per_mile"] = expected_result_df.apply(
+            lambda row: row["cost"] / row["distance"] + 10, axis=1
+        )
+        expected_result_df["total_cost"] = pd.Series([100, 400, 400, 600, 500, 900])
+        expected_result_df["avg_cost"] = pd.Series(
+            [100.0, 400.0, 200.0, 300.0, 500.0, 450.0]
+        )
+        expected_result_df["max_cost"] = pd.Series([100, 400, 300, 400, 500, 600])
+        expected_result_df["min_cost"] = pd.Series([100, 400, 100, 200, 500, 300])
+        expected_result_df.drop(["cost", "distance"], axis=1, inplace=True)
+        expected_result_df = expected_result_df.sort_values(
+            by=["name", "time"]
+        ).reset_index(drop=True)
+
+        self.assertIsNone(source.keys)
+        self.assertListEqual(["name"], features.keys)
+        self.assertTrue(expected_result_df.equals(result_df))
+
     def test_over_window_transform_with_unsupported_agg_func(self):
         with self.assertRaises(ValueError):
             Feature(
@@ -67,7 +164,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         ).reset_index(drop=True)
 
         result_df = (
-            self.flink_table_builder.build(features=features)
+            self.client.get_features(features=features)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -100,7 +197,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         )
 
         result_df = (
-            self.flink_table_builder.build(features)
+            self.client.get_features(features)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -133,27 +230,19 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         )
 
         result_df = (
-            self.flink_table_builder.build(features)
+            self.client.get_features(features)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
         )
         self.assertTrue(expected_result_df.equals(result_df))
 
-    def test_over_window_transform_with_window_size(self):
-        df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:00:00.001"],
-                ["Emma", 400, 250, "2022-01-01 08:00:00.002"],
-                ["Alex", 300, 200, "2022-01-01 08:00:00.003"],
-                ["Emma", 200, 250, "2022-01-01 08:00:00.004"],
-                ["Jack", 500, 500, "2022-01-01 08:00:00.005"],
-                ["Alex", 600, 800, "2022-01-01 08:00:00.006"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
+    def test_over_window_transform_with_millis_window_size(self):
+        df, schema = self._create_input_data_and_schema_with_millis_time_span()
 
-        source = self._create_file_source(df, timestamp_format="%Y-%m-%d %H:%M:%S.%f")
+        source = self._create_file_source(
+            df, timestamp_format="%Y-%m-%d %H:%M:%S.%f", schema=schema
+        )
 
         features = DerivedFeatureView(
             name="feature_view",
@@ -180,7 +269,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         ).reset_index(drop=True)
 
         result_df = (
-            self.flink_table_builder.build(features=features)
+            self.client.get_features(features=features)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -236,123 +325,9 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         ).reset_index(drop=True)
 
         result_df = (
-            self.flink_table_builder.build(features=features)
+            self.client.get_features(features=features)
             .to_pandas()
             .sort_values(by=["name", "time"])
-            .reset_index(drop=True)
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
-
-    def test_expression_transform_on_over_window_transform(self):
-        df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:00:00.001"],
-                ["Emma", 400, 250, "2022-01-01 08:00:00.002"],
-                ["Alex", 300, 200, "2022-01-01 08:00:00.003"],
-                ["Emma", 200, 250, "2022-01-01 08:00:00.004"],
-                ["Jack", 500, 500, "2022-01-01 08:00:00.005"],
-                ["Alex", 600, 800, "2022-01-01 08:00:00.006"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-
-        source = self._create_file_source(df, timestamp_format="%Y-%m-%d %H:%M:%S.%f")
-
-        features = DerivedFeatureView(
-            name="feature_view",
-            source=source,
-            features=[
-                Feature(
-                    name="cost_sum",
-                    dtype=Int64,
-                    transform=OverWindowTransform(
-                        expr="cost",
-                        agg_func="SUM",
-                        group_by_keys=["name"],
-                        window_size=timedelta(milliseconds=3),
-                    ),
-                ),
-                Feature(name="double_cost_sum", dtype=Int64, transform="cost_sum * 2"),
-            ],
-        )
-
-        expected_result_df = df
-        expected_result_df["cost_sum"] = pd.Series([100, 400, 400, 600, 500, 900])
-        expected_result_df["double_cost_sum"] = pd.Series(
-            [200, 800, 800, 1200, 1000, 1800]
-        )
-        expected_result_df.drop(["cost", "distance"], axis=1, inplace=True)
-        expected_result_df = expected_result_df.sort_values(
-            by=["name", "time"]
-        ).reset_index(drop=True)
-
-        result_df = (
-            self.flink_table_builder.build(features=features)
-            .to_pandas()
-            .sort_values(by=["name", "time"])
-            .reset_index(drop=True)
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
-
-    def test_python_udf_transform_on_over_window_transform(self):
-        df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:00:00.001"],
-                ["Emma", 400, 250, "2022-01-01 08:00:00.002"],
-                ["Alex", 300, 200, "2022-01-01 08:00:00.003"],
-                ["Emma", 200, 250, "2022-01-01 08:00:00.004"],
-                ["Jack", 500, 500, "2022-01-01 08:00:00.005"],
-                ["Alex", 600, 800, "2022-01-01 08:00:00.006"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-
-        source = self._create_file_source(df, timestamp_format="%Y-%m-%d %H:%M:%S.%f")
-
-        features = DerivedFeatureView(
-            name="feature_view",
-            source=source,
-            features=[
-                Feature(
-                    name="lower_name",
-                    dtype=String,
-                    transform=PythonUdfTransform(lambda row: row["name"].lower()),
-                ),
-                Feature(
-                    name="cost_sum",
-                    dtype=Int64,
-                    transform=OverWindowTransform(
-                        expr="cost",
-                        agg_func="SUM",
-                        group_by_keys=["lower_name"],
-                        window_size=timedelta(milliseconds=3),
-                    ),
-                ),
-                Feature(
-                    name="cost_sum_sqrt",
-                    dtype=Float64,
-                    transform=PythonUdfTransform(lambda row: sqrt(row["cost_sum"])),
-                ),
-            ],
-        )
-
-        expected_result_df = df
-        expected_result_df["lower_name"] = expected_result_df["name"].apply(
-            lambda x: x.lower()
-        )
-        expected_result_df["cost_sum"] = pd.Series([100, 400, 400, 600, 500, 900])
-        expected_result_df["cost_sum_sqrt"] = expected_result_df["cost_sum"].apply(
-            lambda x: sqrt(x)
-        )
-        expected_result_df.drop(["name", "cost", "distance"], axis=1, inplace=True)
-        expected_result_df = expected_result_df.sort_values(
-            by=["lower_name", "time"]
-        ).reset_index(drop=True)
-
-        result_df = (
-            self.flink_table_builder.build(features=features)
-            .to_pandas()
-            .sort_values(by=["lower_name", "time"])
             .reset_index(drop=True)
         )
         self.assertTrue(expected_result_df.equals(result_df))
@@ -445,7 +420,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
             ],
         )
 
-        table = self.flink_table_builder.build(features=features)
+        table = self.client.get_features(features=features)
         result_df = (
             table.to_pandas().sort_values(by=["name", "time"]).reset_index(drop=True)
         )
@@ -512,7 +487,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         )
 
         result_df = (
-            self.flink_table_builder.build(feature_view)
+            self.client.get_features(feature_view)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -549,7 +524,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         )
 
         result_df = (
-            self.flink_table_builder.build(feature_view)
+            self.client.get_features(feature_view)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -627,9 +602,9 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
             drop=True
         )
 
-        table = self.flink_table_builder.build(feature_view)
         result_df = (
-            flink_table_to_pandas(table)
+            self.client.get_features(feature_view)
+            .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
         )
@@ -685,7 +660,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
             ],
         )
 
-        table = self.flink_table_builder.build(features=features)
+        table = self.client.get_features(features=features)
         result_df = (
             table.to_pandas().sort_values(by=["name", "time"]).reset_index(drop=True)
         )
@@ -775,7 +750,7 @@ class FlinkTableBuilderOverWindowTransformTest(FlinkTableBuilderTestBase):
         ).reset_index(drop=True)
 
         result_df = (
-            self.flink_table_builder.build(features=features)
+            self.client.get_features(features=features)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)

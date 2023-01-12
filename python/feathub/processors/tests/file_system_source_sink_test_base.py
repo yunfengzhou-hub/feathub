@@ -11,16 +11,23 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from abc import abstractmethod
 
-from feathub.processors.flink.table_builder.print_utils import insert_into_print_sink
-from feathub.processors.flink.table_builder.tests.table_builder_test_utils import (
-    FlinkTableBuilderTestBase,
-)
+from feathub.feathub_client import FeathubClient
+from feathub.processors.tests.processor_test_base import ProcessorTestBase
 
 
-class PrintSinkTest(FlinkTableBuilderTestBase):
-    def test_print_sink(self):
-        table = self.t_env.from_elements([(1,), (2,)], ["val"])
+class FileSystemSourceSinkTestBase(ProcessorTestBase):
+    """
+    Base class that provides test cases to verify FileSystemSource and FileSystemSink.
+    """
 
-        table_result = insert_into_print_sink(self.t_env, table)
-        table_result.wait()
+    __test__ = False
+
+    @abstractmethod
+    def get_client(self) -> FeathubClient:
+        pass
+
+    # TODO: unify the structure of files written out by different processors.
+
+    # TODO: Add test case to verify allow_overwrite.

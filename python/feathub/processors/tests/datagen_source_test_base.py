@@ -11,24 +11,30 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from abc import abstractmethod
 
 from feathub.common.types import Int32, Timestamp
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.datagen_source import (
     DataGenSource,
     RandomField,
     SequenceField,
 )
-from feathub.processors.flink.table_builder.datagen_utils import (
-    get_table_from_data_gen_source,
-)
-from feathub.processors.flink.table_builder.tests.table_builder_test_utils import (
-    FlinkTableBuilderTestBase,
-)
-
+from feathub.processors.tests.processor_test_base import ProcessorTestBase
 from feathub.table.schema import Schema
 
 
-class DataGenUtilsTest(FlinkTableBuilderTestBase):
+class DataGenSourceTestBase(ProcessorTestBase):
+    """
+    Base class that provides test cases to verify DataGenSource.
+    """
+
+    __test__ = False
+
+    @abstractmethod
+    def get_client(self) -> FeathubClient:
+        pass
+
     def test_data_gen_source(self):
         source = DataGenSource(
             name="datagen_src",
@@ -42,7 +48,7 @@ class DataGenUtilsTest(FlinkTableBuilderTestBase):
             timestamp_format="%Y-%m-%d %H:%M:%S",
         )
 
-        table = get_table_from_data_gen_source(self.t_env, source)
-        df = table.to_pandas()
+        df = self.client.get_features(features=source).to_pandas()
+
         self.assertEquals(10, df.shape[0])
         self.assertTrue((df["val"] >= 0).all() and (df["val"] <= 100).all())
