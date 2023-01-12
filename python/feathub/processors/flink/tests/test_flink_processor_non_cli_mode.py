@@ -43,7 +43,7 @@ from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.table.schema import Schema
 
 
-class FlinkProcessorTest(unittest.TestCase):
+class FlinkProcessorNonCliModeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.registry = LocalRegistry(props={})
 

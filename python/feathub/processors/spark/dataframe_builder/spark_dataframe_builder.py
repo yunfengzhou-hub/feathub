@@ -127,7 +127,10 @@ class SparkDataFrameBuilder:
                     f"{type(feature.transform).__name__} for feature {feature.name}."
                 )
 
-        return tmp_dataframe
+        output_fields = feature_view.get_output_fields(
+            source_fields=source_dataframe.schema.fieldNames()
+        )
+        return tmp_dataframe.select(output_fields)
 
     @staticmethod
     def _evaluate_expression_transform(

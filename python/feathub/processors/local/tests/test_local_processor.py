@@ -12,255 +12,107 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pandas as pd
-from datetime import datetime
+from feathub.processors.local.local_processor import LocalProcessor
+from feathub.processors.processor import Processor
+from feathub.processors.tests.expression_transform_test_utils import (
+    ExpressionTransformTestBase,
+)
+from feathub.processors.tests.file_system_source_sink_test_utils import (
+    FileSystemSourceSinkTestBase,
+)
+from feathub.processors.tests.get_table_test_utils import GetTableTestBase
+from feathub.processors.tests.join_transform_test_utils import JoinTransformTestBase
+from feathub.processors.tests.over_window_transform_test_utils import (
+    OverWindowTransformTestBase,
+)
+from feathub.processors.tests.processor_test_utils import ProcessorTestBase
+from feathub.processors.tests.python_udf_transform_test_utils import (
+    PythonUDFTransformTestBase,
+)
+from feathub.registries.registry import Registry
 
-from feathub.common.exceptions import FeathubException
-from feathub.common.test_utils import LocalProcessorTestCase
-from feathub.feature_tables.sinks.memory_store_sink import MemoryStoreSink
-from feathub.online_stores.memory_online_store import MemoryOnlineStore
+
+class LocalProcessorTestBase(ProcessorTestBase):
+    __test__ = False
+
+    def get_processor(self, registry: Registry) -> Processor:
+        return LocalProcessor(props={}, registry=self.registry)
 
 
-class ProcessorTest(LocalProcessorTestCase):
-    def setUp(self):
-        super().setUp()
-        self.input_data = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:01:00"],
-                ["Emma", 400, 250, "2022-01-01 08:02:00"],
-                ["Alex", 300, 200, "2022-01-02 08:03:00"],
-                ["Emma", 200, 250, "2022-01-02 08:04:00"],
-                ["Jack", 500, 500, "2022-01-03 08:05:00"],
-                ["Alex", 600, 800, "2022-01-03 08:06:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
+class LocalProcessorExpressionTransformTest(
+    LocalProcessorTestBase, ExpressionTransformTestBase
+):
+    __test__ = True
 
-    def tearDown(self):
-        super().tearDown()
-        MemoryOnlineStore.get_instance().reset()
 
-    def test_get_table_with_single_key(self):
+class LocalProcessorFileSystemSourceSinkTransformTest(
+    LocalProcessorTestBase, FileSystemSourceSinkTestBase
+):
+    __test__ = True
+
+    def test_file_source(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
-        keys = pd.DataFrame(
-            [
-                ["Alex"],
-                ["Jack"],
-                ["Dummy"],
-            ],
-            columns=["name"],
-        )
-        result_df = self.processor.get_table(features=source, keys=keys).to_pandas()
-        expected_result_df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:01:00"],
-                ["Alex", 300, 200, "2022-01-02 08:03:00"],
-                ["Jack", 500, 500, "2022-01-03 08:05:00"],
-                ["Alex", 600, 800, "2022-01-03 08:06:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
+        source = self._create_file_source(df)
+        result_df = self.processor.get_table(features=source).to_pandas()
+        self.assertTrue(df.equals(result_df))
 
-    def test_get_table_with_multiple_keys(self):
-        df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
-        keys = pd.DataFrame(
-            [
-                ["Alex", 100],
-                ["Alex", 200],
-                ["Jack", 500],
-                ["Dummy", 300],
-            ],
-            columns=["name", "cost"],
-        )
-        result_df = self.processor.get_table(features=source, keys=keys).to_pandas()
-        expected_result_df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:01:00"],
-                ["Jack", 500, 500, "2022-01-03 08:05:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
 
-    def test_get_table_with_start_datetime(self):
-        df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
-        start_datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
+class LocalProcessorGetTableTest(LocalProcessorTestBase, GetTableTestBase):
+    __test__ = True
 
-        result_df = self.processor.get_table(
-            features=source, start_datetime=start_datetime
-        ).to_pandas()
-        expected_result_df = pd.DataFrame(
-            [
-                ["Alex", 300, 200, "2022-01-02 08:03:00"],
-                ["Emma", 200, 250, "2022-01-02 08:04:00"],
-                ["Jack", 500, 500, "2022-01-03 08:05:00"],
-                ["Alex", 600, 800, "2022-01-03 08:06:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
+    # TODO: Make LocalProcessor throw Feathub Exception when non-exist key is
+    #  encountered.
+    def test_get_table_with_non_exist_key(self):
+        pass
 
-    def test_get_table_with_end_datetime(self):
-        df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
-        end_datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
+    # TODO: Make LocalProcessor throw Feathub Exception with unsupported FeatureView.
+    def test_get_table_with_unsupported_feature_view(self):
+        pass
 
-        result_df = self.processor.get_table(
-            features=source, end_datetime=end_datetime
-        ).to_pandas()
-        expected_result_df = pd.DataFrame(
-            [
-                ["Alex", 100, 100, "2022-01-01 08:01:00"],
-                ["Emma", 400, 250, "2022-01-01 08:02:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_result_df.equals(result_df))
 
-    def test_get_table_missing_timestamp(self):
-        df = self.input_data.copy()
-        df = df.drop(columns=["time"])
-        source = self._create_file_source(df, keys=["name"], timestamp_field=None)
-        end_datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
+class LocalProcessorFilePythonUDFTransformTest(
+    LocalProcessorTestBase, JoinTransformTestBase
+):
+    __test__ = True
 
-        try:
-            self.processor.get_table(
-                features=source, end_datetime=end_datetime
-            ).to_pandas()
-            self.fail("RuntimeError should be raised.")
-        except FeathubException as err:
-            self.assertEqual(str(err), "Features do not have timestamp column.")
+    def test_bounded_left_table_join_unbounded_right_table(self):
+        pass
 
-    def test_materialize_features_with_inconsistent_dtypes(self):
-        table_name = "table_name_1"
-        sink = MemoryStoreSink(table_name=table_name)
 
-        source_1 = self._create_file_source(self.input_data, keys=["name"])
-        self.processor.materialize_features(
-            features=source_1,
-            sink=sink,
-            allow_overwrite=True,
-        ).wait()
+class LocalProcessorOverWindowTransformTest(
+    LocalProcessorTestBase, OverWindowTransformTestBase
+):
+    __test__ = True
 
-        # Inserts data with different schema to the same table.
-        input_data_2 = pd.DataFrame(
-            [
-                ["Emma", 1200, "2022-01-01 08:04:00"],
-                ["Alex", 1600, "2022-01-05 08:06:00"],
-            ],
-            columns=["name", "cost", "time"],
-        )
-        source_2 = self._create_file_source(input_data_2, keys=["name"])
+    def test_over_window_transform_without_key(self):
+        pass
 
-        try:
-            self.processor.materialize_features(
-                features=source_2,
-                sink=sink,
-                allow_overwrite=True,
-            ).wait()
-            self.fail("RuntimeError should be raised.")
-        except RuntimeError as err:
-            self.assertEqual(
-                str(err),
-                f"Features' dtypes {input_data_2.dtypes.to_dict()} do not match with "
-                f"dtypes {self.input_data.dtypes.to_dict()} of the table {table_name}.",
-            )
+    def test_over_window_transform_with_limit(self):
+        pass
 
-    def test_materialize_features(self):
-        table_name = "table_name_1"
-        # Inserts data to a new table and verifies the result.
-        online_features = self._materialize_and_get_online_features(
-            table_name=table_name,
-            input_data=self.input_data,
-            keys_to_get=pd.DataFrame(["Alex", "Emma"], columns=["name"]),
-        )
-        expected_online_features = pd.DataFrame(
-            [
-                ["Alex", 600, 800, "2022-01-03 08:06:00"],
-                ["Emma", 200, 250, "2022-01-02 08:04:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_online_features.equals(online_features))
+    def test_with_epoch_millis_window_size(self):
+        pass
 
-        # Inserts data to the existing table and verifies the result.
-        input_data = pd.DataFrame(
-            [
-                ["Emma", 1200, 250, "2022-01-01 08:04:00"],
-                ["Alex", 1600, 800, "2022-01-05 08:06:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        online_features = self._materialize_and_get_online_features(
-            table_name=table_name,
-            input_data=input_data,
-            keys_to_get=pd.DataFrame(["Alex", "Emma"], columns=["name"]),
-        )
-        expected_online_features = pd.DataFrame(
-            [
-                ["Alex", 1600, 800, "2022-01-05 08:06:00"],
-                ["Emma", 200, 250, "2022-01-02 08:04:00"],
-            ],
-            columns=["name", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_online_features.equals(online_features))
+    def test_over_window_transform_with_window_size_and_limit(self):
+        pass
 
-    def test_get_online_features_with_extra_fields_in_input_data(self):
-        keys = pd.DataFrame(
-            [
-                ["Alex", 100],
-                ["Emma", 300],
-            ],
-            columns=["name", "extra_field"],
-        )
+    def test_over_window_transform_first_last_value(self):
+        pass
 
-        online_features = self._materialize_and_get_online_features(
-            table_name="table_name_1",
-            input_data=self.input_data,
-            keys_to_get=keys,
-        )
-        expected_online_features = pd.DataFrame(
-            [
-                ["Alex", 100, 600, 800, "2022-01-03 08:06:00"],
-                ["Emma", 300, 200, 250, "2022-01-02 08:04:00"],
-            ],
-            columns=["name", "extra_field", "cost", "distance", "time"],
-        )
-        self.assertTrue(expected_online_features.equals(online_features))
+    def test_over_window_transform_row_num(self):
+        pass
 
-    def test_get_online_features_without_timestamp_field(self):
-        online_features = self._materialize_and_get_online_features(
-            table_name="table_name_1",
-            input_data=self.input_data,
-            keys_to_get=pd.DataFrame(["Alex", "Emma"], columns=["name"]),
-            include_timestamp_field=False,
-        )
-        expected_online_features = pd.DataFrame(
-            [
-                ["Alex", 600, 800],
-                ["Emma", 200, 250],
-            ],
-            columns=["name", "cost", "distance"],
-        )
-        self.assertTrue(expected_online_features.equals(online_features))
+    def test_over_window_transform_value_counts(self):
+        pass
 
-    def test_get_online_features_with_selected_features(self):
-        # Inserts data to a new table and verifies the result.
-        online_features = self._materialize_and_get_online_features(
-            table_name="table_name_1",
-            input_data=self.input_data,
-            keys_to_get=pd.DataFrame(["Alex", "Emma"], columns=["name"]),
-            feature_names=["cost"],
-        )
-        expected_online_features = pd.DataFrame(
-            [
-                ["Alex", 600, "2022-01-03 08:06:00"],
-                ["Emma", 200, "2022-01-02 08:04:00"],
-            ],
-            columns=["name", "cost", "time"],
-        )
-        self.assertTrue(expected_online_features.equals(online_features))
+    def test_over_window_transform_filter_expr(self):
+        pass
+
+    def test_over_window_transform_with_different_criteria(self):
+        pass
+
+
+class LocalProcessorPythonUDFTransformTest(
+    LocalProcessorTestBase, PythonUDFTransformTestBase
+):
+    __test__ = True

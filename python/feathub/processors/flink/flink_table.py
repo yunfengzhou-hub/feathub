@@ -55,6 +55,8 @@ def flink_table_to_pandas(table: NativeFlinkTable) -> pd.DataFrame:
     """
     schema = table.get_schema()
     field_names = schema.get_field_names()
+    print("field names: " + str(field_names))
+    print(schema)
     field_types = {
         name: FLINK_DATA_TYPE_TO_NUMPY_TYPE.get(
             type(schema.get_field_data_type(name)), None
@@ -62,10 +64,13 @@ def flink_table_to_pandas(table: NativeFlinkTable) -> pd.DataFrame:
         for name in field_names
     }
     with table.execute().collect() as results:
+        # print([row for row in results])
         data: Dict[str, List[Any]] = defaultdict(list)
         for row in results:
             for name, value in zip(field_names, row):
                 data[name].append(value)
+
+        print(data)
 
         return pd.DataFrame(
             {
@@ -125,8 +130,13 @@ class FlinkTable(Table):
         return to_feathub_schema(schema)
 
     def to_pandas(self, force_bounded: bool = False) -> pd.DataFrame:
-        if self.flink_processor.deployment_mode != DeploymentMode.SESSION:
-            raise FeathubException("Table.to_pandas is only supported in session mode.")
+        if self.flink_processor.deployment_mode not in (
+            DeploymentMode.CLI,
+            DeploymentMode.SESSION,
+        ):
+            raise FeathubException(
+                "Table.to_pandas is only supported in cli mode and session mode."
+            )
 
         feature = self.feature
         if not feature.is_bounded():
