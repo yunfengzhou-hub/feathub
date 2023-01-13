@@ -13,31 +13,28 @@
 #  limitations under the License.
 from abc import abstractmethod
 
+import pytest
+
 from feathub.common.types import Float64
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.processors.processor import Processor
-from feathub.processors.tests.processor_test_utils import ProcessorTestBase
+from feathub.processors.tests.processor_test_utils import ProcessorTestBase, get_pytest_params
 
 
-class ExpressionTransformTestBase(ProcessorTestBase):
+@pytest.mark.parametrize('client_config', get_pytest_params())
+class ExpressionTransformTest(ProcessorTestBase):
     """
     Base class that provides test cases to verify ExpressionTransform.
     """
 
-    __test__ = False
+    def test_expression_transform(self, client_config):
+        self._test_expression_transform(client_config, False)
 
-    @abstractmethod
-    def get_processor(self) -> Processor:
-        pass
+    def test_expression_transform_keep_source_fields(self, client_config):
+        self._test_expression_transform(client_config, True)
 
-    def test_expression_transform(self):
-        self._test_expression_transform(False)
-
-    def test_expression_transform_keep_source_fields(self):
-        self._test_expression_transform(True)
-
-    def _test_expression_transform(self, keep_source_fields: bool):
+    def _test_expression_transform(self, client_config, keep_source_fields: bool):
         source = self._create_file_source(self.input_data.copy())
 
         f_cost_per_mile = Feature(

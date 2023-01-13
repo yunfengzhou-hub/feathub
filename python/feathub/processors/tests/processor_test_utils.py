@@ -16,16 +16,66 @@ import tempfile
 import unittest
 import uuid
 from abc import abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict, Set
 
 import pandas as pd
+import pytest
 
 from feathub.common import types
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
-from feathub.processors.processor import Processor
 from feathub.registries.local_registry import LocalRegistry
 from feathub.table.schema import Schema
+
+
+def get_pytest_params(excluded_tags: Set[str] = None) -> List:
+    _processor_test_configs = {
+        "flink": {
+            "type": "flink",
+            "flink": {
+                "deployment_mode": "cli",
+            },
+        },
+        "local": {
+            "type": "local",
+        },
+        "spark": {
+            "type": "spark",
+            "spark": {
+                "master": "local[1]",
+            },
+        },
+    }
+
+    pytest_params = []
+    for tag, processor_config in _processor_test_configs:
+        if excluded_tags is not None and tag in excluded_tags:
+            continue
+
+        client_config = (
+            {
+                "processor": processor_config,
+                "online_store": {
+                    "types": ["memory"],
+                    "memory": {},
+                },
+                "registry": {
+                    "type": "local",
+                    "local": {
+                        "namespace": "default",
+                    },
+                },
+                "feature_service": {
+                    "type": "local",
+                    "local": {},
+                },
+            }
+        )
+
+        pytest_params.append(pytest.param(client_config, id=tag))
+
+    return pytest_params
 
 
 class ProcessorTestBase(unittest.TestCase):
@@ -44,18 +94,19 @@ class ProcessorTestBase(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.registry = LocalRegistry(props={})
         self.input_data, self.schema = self._create_input_data_and_schema()
-        self.processor = self.get_processor()
 
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self, client_config: Dict) -> FeathubClient:
         """
         Returns a Processor instance for test cases.
         """
-        pass
+        return FeathubClient(
+            props=client_config
+        )
 
     def _create_file_source(
         self,
