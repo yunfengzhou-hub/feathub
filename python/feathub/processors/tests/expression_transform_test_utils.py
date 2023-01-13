@@ -18,7 +18,6 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 
 
 class ExpressionTransformTestBase(ProcessorTestBase):
@@ -29,7 +28,7 @@ class ExpressionTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_expression_transform(self):

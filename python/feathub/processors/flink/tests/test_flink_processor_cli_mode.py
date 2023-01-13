@@ -17,13 +17,13 @@ import shutil
 import tempfile
 
 import pandas as pd
-from feathub.online_stores.memory_online_store import MemoryOnlineStore
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import String, Int64, Float64
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
+from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.processors.flink.flink_processor import FlinkProcessor
 from feathub.processors.processor import Processor
 from feathub.processors.tests.datagen_source_test_utils import DataGenSourceTestBase
@@ -51,7 +51,6 @@ from feathub.processors.tests.sliding_window_transform_test_utils import (
     SlidingWindowTransformTestBase,
 )
 from feathub.registries.local_registry import LocalRegistry
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -92,12 +91,7 @@ class FlinkProcessorCliModeTestBase(ProcessorTestBase):
         if "PYFLINK_GATEWAY_DISABLED" in os.environ:
             os.environ.pop("PYFLINK_GATEWAY_DISABLED")
 
-    def get_processor(self, registry: Registry) -> Processor:
-        if registry != self.registry:
-            raise FeathubException(
-                "FlinkProcessor tests must create processor from the registry "
-                "created in setUpClass"
-            )
+    def get_processor(self) -> Processor:
         return self.processor
 
 

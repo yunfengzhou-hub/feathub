@@ -21,7 +21,6 @@ from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 
 
 class PythonUDFTransformTestBase(ProcessorTestBase):
@@ -32,7 +31,7 @@ class PythonUDFTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_python_udf_transform(self):

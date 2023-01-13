@@ -22,7 +22,6 @@ from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.over_window_transform import OverWindowTransform
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -34,7 +33,7 @@ class OverWindowTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_over_window_transform(self):

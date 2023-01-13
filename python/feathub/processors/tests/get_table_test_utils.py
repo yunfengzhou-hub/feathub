@@ -23,7 +23,6 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 
 
 def _to_timestamp(datetime_str):
@@ -39,7 +38,7 @@ class GetTableTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_get_table_from_file_source(self):

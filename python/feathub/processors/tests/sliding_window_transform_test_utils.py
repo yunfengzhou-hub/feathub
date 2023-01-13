@@ -29,7 +29,6 @@ from feathub.feature_views.transforms.sliding_window_transform import (
 )
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT = {
@@ -54,7 +53,7 @@ class SlidingWindowTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_transform_without_key(self):

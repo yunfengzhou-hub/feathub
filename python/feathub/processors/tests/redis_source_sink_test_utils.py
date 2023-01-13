@@ -26,7 +26,6 @@ from feathub.common.utils import (
 from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -40,7 +39,7 @@ class RedisSourceSinkTestBase(ProcessorTestBase):
     redis_container: RedisContainer = None
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     @classmethod

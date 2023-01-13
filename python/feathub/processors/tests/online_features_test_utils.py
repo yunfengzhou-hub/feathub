@@ -21,7 +21,6 @@ from feathub.feature_tables.sinks.memory_store_sink import MemoryStoreSink
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -33,7 +32,7 @@ class OnlineFeaturesTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_materialize_features_with_inconsistent_dtypes(self):

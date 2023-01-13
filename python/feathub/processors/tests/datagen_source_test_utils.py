@@ -21,7 +21,6 @@ from feathub.feature_tables.sources.datagen_source import (
 )
 from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -33,7 +32,7 @@ class DataGenSourceTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_data_gen_source(self):

@@ -27,16 +27,15 @@ from feathub.processors.tests.file_system_source_sink_test_utils import (
 )
 from feathub.processors.tests.print_sink_test_utils import PrintSinkTestBase
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
-from feathub.registries.registry import Registry
 
 
 class SparkProcessorLocalModeTestBase(ProcessorTestBase):
     __test__ = False
 
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         return SparkProcessor(
             props={"processor.spark.master": "local[1]"},
-            registry=registry,
+            registry=self.registry,
         )
 
 

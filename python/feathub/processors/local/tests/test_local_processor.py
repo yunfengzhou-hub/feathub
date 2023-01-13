@@ -30,13 +30,12 @@ from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 from feathub.processors.tests.python_udf_transform_test_utils import (
     PythonUDFTransformTestBase,
 )
-from feathub.registries.registry import Registry
 
 
 class LocalProcessorTestBase(ProcessorTestBase):
     __test__ = False
 
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         return LocalProcessor(props={}, registry=self.registry)
 
 

@@ -34,7 +34,6 @@ from feathub.processors.tests.sliding_window_transform_test_utils import (
     DISABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
     ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
 )
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -46,7 +45,7 @@ class MixedTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         pass
 
     def test_python_udf_transform_on_over_window_transform(self):

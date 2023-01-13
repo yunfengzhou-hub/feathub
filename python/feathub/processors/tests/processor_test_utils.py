@@ -25,7 +25,6 @@ from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.processors.processor import Processor
 from feathub.registries.local_registry import LocalRegistry
-from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
 
 
@@ -45,17 +44,16 @@ class ProcessorTestBase(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.registry = LocalRegistry(props={})
         self.input_data, self.schema = self._create_input_data_and_schema()
-        self.processor = self.get_processor(self.registry)
+        self.processor = self.get_processor()
 
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @abstractmethod
-    def get_processor(self, registry: Registry) -> Processor:
+    def get_processor(self) -> Processor:
         """
-        Returns a Processor instance for test cases, according to the
-        provided Registry.
+        Returns a Processor instance for test cases.
         """
         pass
 
