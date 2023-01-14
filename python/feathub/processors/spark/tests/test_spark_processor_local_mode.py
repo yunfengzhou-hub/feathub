@@ -13,12 +13,13 @@
 # limitations under the License.
 import glob
 import tempfile
+import unittest
 
 import pandas as pd
+import pytest
 
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
-from feathub.processors.processor import Processor
-from feathub.processors.spark.spark_processor import SparkProcessor
 from feathub.processors.tests.expression_transform_test_utils import (
     ExpressionTransformTestBase,
 )
@@ -26,38 +27,31 @@ from feathub.processors.tests.file_system_source_sink_test_utils import (
     FileSystemSourceSinkTestBase,
 )
 from feathub.processors.tests.print_sink_test_utils import PrintSinkTestBase
-from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 
 
-class SparkProcessorLocalModeTestBase(ProcessorTestBase):
-    __test__ = False
-
-    def get_processor(self) -> Processor:
-        return SparkProcessor(
-            props={"processor.spark.master": "local[1]"},
-            registry=self.registry,
-        )
-
-
-class SparkProcessorLocalModeExpressionTransformTest(
-    SparkProcessorLocalModeTestBase, ExpressionTransformTestBase
+class SparkProcessorTest(
+    ExpressionTransformTestBase,
+    FileSystemSourceSinkTestBase,
+    PrintSinkTestBase,
 ):
     __test__ = True
 
+    def get_client(self) -> FeathubClient:
+        return self._get_local_client({
+                "type": "spark",
+                "spark": {
+                    "master": "local[1]",
+                },
+        })
 
-class SparkProcessorLocalModeFileSystemSourceSinkTest(
-    SparkProcessorLocalModeTestBase, FileSystemSourceSinkTestBase
-):
-    __test__ = True
-
-    def test_read_write(self) -> None:
+    def test_file_system_source_sink(self) -> None:
         source = self._create_file_source(self.input_data)
 
         sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
 
         sink = FileSystemSink(sink_path, "csv")
 
-        self.processor.materialize_features(
+        self.client.materialize_features(
             features=source,
             sink=sink,
             allow_overwrite=True,
@@ -72,7 +66,20 @@ class SparkProcessorLocalModeFileSystemSourceSinkTest(
         self.assertTrue(self.input_data.equals(df))
 
 
-class SparkProcessorLocalModePrintSinkTest(
-    SparkProcessorLocalModeTestBase, PrintSinkTestBase
-):
-    __test__ = True
+# class MyTestSuit(unittest.TestCase):
+#     def __init__(self):
+#         super().__init__()
+#         self._addSkip()
+#
+#     def addTests(self):
+#         self.
+
+
+if __name__ == "__main__":
+    print("creating test suit")
+    suite = unittest.TestSuite()
+    suite.addTest(SparkProcessorTest("test_file_system_source_sink"))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
+
+# pytest.main()

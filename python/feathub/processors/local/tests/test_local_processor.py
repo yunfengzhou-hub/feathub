@@ -20,7 +20,7 @@ from feathub.processors.tests.expression_transform_test_utils import (
 from feathub.processors.tests.file_system_source_sink_test_utils import (
     FileSystemSourceSinkTestBase,
 )
-from feathub.processors.tests.get_table_test_utils import GetTableTestBase
+from feathub.processors.tests.get_table_test_utils import GetFeaturesTestBase
 from feathub.processors.tests.join_transform_test_utils import JoinTransformTestBase
 from feathub.processors.tests.online_features_test_utils import OnlineFeaturesTestBase
 from feathub.processors.tests.over_window_transform_test_utils import (
@@ -57,7 +57,7 @@ class LocalProcessorFileSystemSourceSinkTest(
         self.assertTrue(df.equals(result_df))
 
 
-class LocalProcessorGetTableTest(LocalProcessorTestBase, GetTableTestBase):
+class LocalProcessorGetFeaturesTest(LocalProcessorTestBase, GetFeaturesTestBase):
     __test__ = True
 
     # TODO: Make LocalProcessor throw Feathub Exception when non-exist key is

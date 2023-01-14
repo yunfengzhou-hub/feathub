@@ -13,8 +13,8 @@
 #  limitations under the License.
 from abc import abstractmethod
 
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.print_sink import PrintSink
-from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 
 
@@ -26,7 +26,7 @@ class PrintSinkTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self) -> FeathubClient:
         pass
 
     def test_print_sink(self):
@@ -34,7 +34,7 @@ class PrintSinkTestBase(ProcessorTestBase):
 
         sink = PrintSink()
 
-        self.processor.materialize_features(
+        self.client.materialize_features(
             features=source,
             sink=sink,
             allow_overwrite=True,

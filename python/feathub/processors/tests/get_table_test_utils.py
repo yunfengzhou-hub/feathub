@@ -18,10 +18,10 @@ import pandas as pd
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import Float64
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.memory_store_source import MemoryStoreSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 
 
@@ -29,7 +29,7 @@ def _to_timestamp(datetime_str):
     return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
 
 
-class GetTableTestBase(ProcessorTestBase):
+class GetFeaturesTestBase(ProcessorTestBase):
     """
     Base class that provides test cases to verify Processor#get_table in different
     situations.
@@ -38,12 +38,12 @@ class GetTableTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self) -> FeathubClient:
         pass
 
     def test_get_table_from_file_source(self):
         source = self._create_file_source(self.input_data.copy())
-        table = self.processor.get_table(features=source)
+        table = self.client.get_features(features=source)
         df = table.to_pandas()
         self.assertTrue(self.input_data.equals(df))
 
@@ -58,7 +58,7 @@ class GetTableTestBase(ProcessorTestBase):
             columns=["name"],
         )
         result_df = (
-            self.processor.get_table(features=source, keys=keys)
+            self.client.get_features(features=source, keys=keys)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -91,7 +91,7 @@ class GetTableTestBase(ProcessorTestBase):
             columns=["name", "cost"],
         )
         result_df = (
-            self.processor.get_table(features=source, keys=keys)
+            self.client.get_features(features=source, keys=keys)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -123,7 +123,7 @@ class GetTableTestBase(ProcessorTestBase):
         )
 
         with self.assertRaises(FeathubException):
-            self.processor.get_table(features=source, keys=keys).to_pandas()
+            self.client.get_features(features=source, keys=keys).to_pandas()
 
     def test_get_table_with_start_datetime(self):
         df = self.input_data.copy()
@@ -131,7 +131,7 @@ class GetTableTestBase(ProcessorTestBase):
         start_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
-            self.processor.get_table(features=source, start_datetime=start_datetime)
+            self.client.get_features(features=source, start_datetime=start_datetime)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -157,7 +157,7 @@ class GetTableTestBase(ProcessorTestBase):
         end_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
-            self.processor.get_table(features=source, end_datetime=end_datetime)
+            self.client.get_features(features=source, end_datetime=end_datetime)
             .to_pandas()
             .sort_values(by=["name", "cost", "distance", "time"])
             .reset_index(drop=True)
@@ -182,18 +182,18 @@ class GetTableTestBase(ProcessorTestBase):
         _datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
 
         with self.assertRaises(FeathubException):
-            self.processor.get_table(
+            self.client.get_features(
                 features=source, end_datetime=_datetime
             ).to_pandas()
 
         with self.assertRaises(FeathubException):
-            self.processor.get_table(
+            self.client.get_features(
                 features=source, start_datetime=_datetime
             ).to_pandas()
 
     def test_get_table_with_unsupported_feature_view(self):
         with self.assertRaises(FeathubException):
-            self.processor.get_table(
+            self.client.get_features(
                 MemoryStoreSource("table", ["a"], "table")
             ).to_pandas()
 
@@ -221,7 +221,7 @@ class GetTableTestBase(ProcessorTestBase):
         )
 
         result_df = (
-            self.processor.get_table(feature_view)
+            self.client.get_features(feature_view)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)

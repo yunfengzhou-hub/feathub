@@ -13,7 +13,7 @@
 #  limitations under the License.
 from abc import abstractmethod
 
-from feathub.processors.processor import Processor
+from feathub.feathub_client import FeathubClient
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 
 
@@ -25,7 +25,7 @@ class FileSystemSourceSinkTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self) -> FeathubClient:
         pass
 
     # TODO: unify the structure of files written out by different processors.

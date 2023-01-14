@@ -16,16 +16,29 @@ import tempfile
 import unittest
 import uuid
 from abc import abstractmethod
-from typing import Optional, List
+from functools import wraps
+from typing import Optional, List, Dict, Set, Tuple
 
 import pandas as pd
 
 from feathub.common import types
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
-from feathub.processors.processor import Processor
 from feathub.registries.local_registry import LocalRegistry
 from feathub.table.schema import Schema
+
+
+class UnsupportedProcessorTests(object):
+    def __init__(self, unsupported_classes):
+        self.unsupported_classes = unsupported_classes
+
+    def __call__(self, cls):
+        @wraps
+        class Wrapped(cls):
+            def get_unsupported_classes(self):
+                return self.unsupported_classes
+        return Wrapped
 
 
 class ProcessorTestBase(unittest.TestCase):
@@ -44,18 +57,44 @@ class ProcessorTestBase(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.registry = LocalRegistry(props={})
         self.input_data, self.schema = self._create_input_data_and_schema()
-        self.processor = self.get_processor()
+        self.client = self.get_client()
 
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    @staticmethod
+    def get_unsupported_test_cases() -> Tuple:
+        return ()
+
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self) -> FeathubClient:
         """
-        Returns a Processor instance for test cases.
+        Returns a FeathubClient instance for test cases.
         """
         pass
+
+    @staticmethod
+    def _get_local_client(processor_config: Dict) -> FeathubClient:
+        return FeathubClient(
+            props={
+                "processor": processor_config,
+                "online_store": {
+                    "types": ["memory"],
+                    "memory": {},
+                },
+                "registry": {
+                    "type": "local",
+                    "local": {
+                        "namespace": "default",
+                    },
+                },
+                "feature_service": {
+                    "type": "local",
+                    "local": {},
+                },
+            }
+        )
 
     def _create_file_source(
         self,

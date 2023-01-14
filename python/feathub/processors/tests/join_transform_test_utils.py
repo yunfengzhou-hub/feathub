@@ -17,10 +17,10 @@ import pandas as pd
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import Int64, String, Float64
+from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.datagen_source import DataGenSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.processors.processor import Processor
 from feathub.processors.tests.processor_test_utils import ProcessorTestBase
 from feathub.table.schema import Schema
 
@@ -33,7 +33,7 @@ class JoinTransformTestBase(ProcessorTestBase):
     __test__ = False
 
     @abstractmethod
-    def get_processor(self) -> Processor:
+    def get_client(self) -> FeathubClient:
         pass
 
     def test_join_transform(self):
@@ -118,7 +118,7 @@ class JoinTransformTestBase(ProcessorTestBase):
         ).reset_index(drop=True)
 
         result_df = (
-            self.processor.get_table(features=built_feature_view_3)
+            self.client.get_features(features=built_feature_view_3)
             .to_pandas()
             .sort_values(by=["name", "time"])
             .reset_index(drop=True)
@@ -157,7 +157,7 @@ class JoinTransformTestBase(ProcessorTestBase):
         built_feature_view = self.registry.build_features([source_2, feature_view_1])[1]
 
         with self.assertRaises(FeathubException) as cm:
-            self.processor.get_table(built_feature_view).to_pandas()
+            self.client.get_features(built_feature_view).to_pandas()
 
         self.assertIn(
             "Joining a bounded left table with an unbounded right table is currently "
