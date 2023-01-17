@@ -11,16 +11,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import os
-import unittest
 from datetime import datetime, timezone
 from typing import cast
 from unittest.mock import patch
 
-from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import (
     TableDescriptor as NativeFlinkTableDescriptor,
-    StreamTableEnvironment,
 )
 
 from feathub.common.types import Int64, String
@@ -32,33 +28,13 @@ from feathub.processors.flink.table_builder.source_sink_utils import (
     insert_into_sink,
 )
 from feathub.processors.flink.table_builder.tests.mock_table_descriptor import (
-    MockTableDescriptor,
+    MockTableDescriptor, FlinkTableBuilderTestBase,
 )
 from feathub.table.schema import Schema
 from feathub.table.table_descriptor import TableDescriptor
 
 
-class KafkaSourceSinkTest(unittest.TestCase):
-    env = None
-    t_env = None
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        # Due to the resource leak in PyFlink StreamExecutionEnvironment and
-        # StreamTableEnvironment https://issues.apache.org/jira/browse/FLINK-30258.
-        # We want to share env and t_env across all the tests in one class to mitigate
-        # the leak.
-        # TODO: After the ticket is resolved, we should clean up the resource in
-        #  StreamExecutionEnvironment and StreamTableEnvironment after every test to
-        #  fully avoid resource leak.
-        cls.env = StreamExecutionEnvironment.get_execution_environment()
-        cls.t_env = StreamTableEnvironment.create(cls.env)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        if "PYFLINK_GATEWAY_DISABLED" in os.environ:
-            os.environ.pop("PYFLINK_GATEWAY_DISABLED")
-
+class KafkaSourceSinkTest(FlinkTableBuilderTestBase):
     def test_kafka_source(self):
         schema = Schema(["id", "val", "ts"], [String, Int64, Int64])
         source = KafkaSource(

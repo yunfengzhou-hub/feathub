@@ -11,13 +11,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import os
-import unittest
 from unittest.mock import patch
 
-from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import (
-    StreamTableEnvironment,
     TableDescriptor as NativeFlinkTableDescriptor,
 )
 
@@ -26,20 +22,13 @@ from feathub.processors.flink.table_builder.source_sink_utils import (
     insert_into_sink,
 )
 from feathub.processors.flink.table_builder.tests.mock_table_descriptor import (
-    MockTableDescriptor,
+    MockTableDescriptor, FlinkTableBuilderTestBase,
 )
 from feathub.table.table_descriptor import TableDescriptor
 
 
-class RedisSourceSinkTest(unittest.TestCase):
-    @classmethod
-    def tearDownClass(cls) -> None:
-        if "PYFLINK_GATEWAY_DISABLED" in os.environ:
-            os.environ.pop("PYFLINK_GATEWAY_DISABLED")
-
+class RedisSourceSinkTest(FlinkTableBuilderTestBase):
     def test_redis_sink(self):
-        env = StreamExecutionEnvironment.get_execution_environment()
-        t_env = StreamTableEnvironment.create(env)
         sink = RedisSink(
             namespace="test_namespace",
             host="127.0.0.1",
@@ -48,13 +37,13 @@ class RedisSourceSinkTest(unittest.TestCase):
             db_num=3,
         )
 
-        table = t_env.from_elements([(1,)]).alias("id")
+        table = self.t_env.from_elements([(1,)]).alias("id")
         with patch.object(
-            t_env, "create_temporary_table"
+            self.t_env, "create_temporary_table"
         ) as create_temporary_table, patch("pyflink.table.table.Table.execute_insert"):
             descriptor: TableDescriptor = MockTableDescriptor(keys=["id"])
 
-            insert_into_sink(t_env, table, descriptor, sink)
+            insert_into_sink(self.t_env, table, descriptor, sink)
             flink_table_descriptor: NativeFlinkTableDescriptor = (
                 create_temporary_table.call_args[0][1]
             )

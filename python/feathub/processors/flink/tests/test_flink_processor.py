@@ -400,8 +400,6 @@ class FlinkProcessorITTest(
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        KafkaSourceSinkITTest.tearDown(self)
-        RedisSourceSinkITTest.tearDown(self)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -567,11 +565,11 @@ class FlinkProcessorITTest(
 
         self.client = prev_client
 
-    def test_get_table_with_non_exist_key(self):
-        pass
-
-    def test_get_table_with_multiple_keys(self):
-        pass
+    # def test_get_table_with_non_exist_key(self):
+    #     pass
+    #
+    # def test_get_table_with_multiple_keys(self):
+    #     pass
 
     # TODO: Fix the bug that FlinkProcessor to_pandas does not support none values.
     def test_join_sliding_feature(self):
@@ -581,20 +579,20 @@ class FlinkProcessorITTest(
     def test_over_window_on_join_field(self):
         pass
 
-    def test_python_udf_transform_on_over_window_transform(self):
-        pass
+    # def test_python_udf_transform_on_over_window_transform(self):
+    #     pass
 
     # TODO: Fix the bug that in test_redis_sink when column "val"
     #  contains None, all values in this column are saved as None
     #  to Redis.
-    def test_redis_sink(self):
-        pass
-
-    def test_sliding_window_with_millisecond_sliding_window_timestamp(self):
-        pass
-
-    def test_sliding_window_with_python_udf(self):
-        pass
-
-    def test_over_window_transform_value_counts(self):
-        pass
+    # def test_redis_sink(self):
+    #     pass
+    #
+    # def test_sliding_window_with_millisecond_sliding_window_timestamp(self):
+    #     pass
+    #
+    # def test_sliding_window_with_python_udf(self):
+    #     pass
+    #
+    # def test_over_window_transform_value_counts(self):
+    #     pass
