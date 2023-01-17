@@ -18,12 +18,8 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class PrintSinkITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify PrintSink.
-    """
-
     def test_print_sink(self):
-        source = self._create_file_source(self.input_data.copy())
+        source = self.create_file_source(self.input_data.copy())
 
         sink = PrintSink()
 

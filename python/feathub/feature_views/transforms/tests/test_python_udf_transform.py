@@ -23,13 +23,9 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class PythonUDFTransformITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify PythonUdfTransform.
-    """
-
     def test_python_udf_transform(self):
         df_1 = self.input_data.copy()
-        source = self._create_file_source(df_1)
+        source = self.create_file_source(df_1)
 
         def name_to_lower(row: pd.Series) -> str:
             return row["name"].lower()

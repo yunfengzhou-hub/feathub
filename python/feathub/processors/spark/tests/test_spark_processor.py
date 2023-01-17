@@ -35,7 +35,7 @@ class SparkProcessorITTest(
     __test__ = True
 
     def get_client(self) -> FeathubClient:
-        return self._get_local_client(
+        return self.get_local_client(
             {
                 "type": "spark",
                 "spark": {
@@ -45,7 +45,7 @@ class SparkProcessorITTest(
         )
 
     def test_file_system_source_sink(self):
-        source = self._create_file_source(self.input_data)
+        source = self.create_file_source(self.input_data)
 
         sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
 

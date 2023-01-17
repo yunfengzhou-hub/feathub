@@ -13,17 +13,20 @@
 #  limitations under the License.
 from abc import ABC
 from datetime import timedelta
+from math import sqrt
 
 import pandas as pd
 
 from feathub.common.test_utils import to_epoch_millis, to_epoch
 from feathub.common.types import Int64, String, Float64, MapType, Float32
+from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
     ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG,
     SKIP_SAME_WINDOW_OUTPUT_CONFIG,
 )
+from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
@@ -45,13 +48,9 @@ ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT = {
 
 
 class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify SlidingWindowTransform.
-    """
-
     def test_transform_without_key(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         f_total_cost = Feature(
             name="total_cost",
@@ -128,7 +127,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
 
     def test_transform_with_limit(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         f_total_cost = Feature(
             name="total_cost",
@@ -234,7 +233,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
 
     def test_transform_with_expression_as_group_by_key(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         f_name_name = Feature(
             name="name_name", dtype=String, transform="name || '_' || name"
@@ -361,7 +360,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
         schema = Schema(
             ["name", "action", "cost", "time"], [String, String, Float64, String]
         )
-        source = self._create_file_source(df, schema=schema, keys=["name"])
+        source = self.create_file_source(df, schema=schema, keys=["name"])
 
         expected_results = [
             (
@@ -748,7 +747,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
 
     def test_transform_with_expr_feature_after_sliding_feature(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         expected_results = [
             (
@@ -1162,6 +1161,137 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
                 f"actual: {result_df}",
             )
 
+    def test_join_sliding_feature(self):
+        df = pd.DataFrame(
+            [
+                ["Alex", 100.0, "2022-01-01 09:01:00"],
+                ["Alex", 200.0, "2022-01-01 09:01:20"],
+                ["Alex", 450.0, "2022-01-01 09:06:00"],
+            ],
+            columns=["name", "cost", "time"],
+        )
+
+        schema = Schema(["name", "cost", "time"], [String, Float64, String])
+        source = self.create_file_source(
+            df, schema=schema, keys=["name"], name="source"
+        )
+
+        df2 = pd.DataFrame(
+            [
+                ["Alex", "2022-01-01 09:01:00"],
+                ["Alex", "2022-01-01 09:02:00"],
+                ["Alex", "2022-01-01 09:05:00"],
+                ["Alex", "2022-01-01 09:07:00"],
+                ["Alex", "2022-01-01 09:09:00"],
+            ]
+        )
+        source2 = self.create_file_source(
+            df2,
+            schema=Schema(["name", "time"], [String, String]),
+            keys=["name"],
+            name="source2",
+        )
+
+        expected_results = [
+            (
+                ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        ["Alex", "2022-01-01 09:01:00", None, None],
+                        ["Alex", "2022-01-01 09:02:00", 300.0, 2],
+                        ["Alex", "2022-01-01 09:05:00", 0.0, 0],
+                        ["Alex", "2022-01-01 09:07:00", 450.0, 1],
+                        ["Alex", "2022-01-01 09:09:00", 0.0, 0],
+                    ],
+                    columns=["name", "time", "last_2_minute_total_cost", "cnt"],
+                ),
+            ),
+            (
+                DISABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        ["Alex", "2022-01-01 09:01:00", 0.0, 0],
+                        ["Alex", "2022-01-01 09:02:00", 300.0, 2],
+                        ["Alex", "2022-01-01 09:05:00", 0.0, 0],
+                        ["Alex", "2022-01-01 09:07:00", 450.0, 1],
+                        ["Alex", "2022-01-01 09:09:00", 0.0, 0],
+                    ],
+                    columns=["name", "time", "last_2_minute_total_cost", "cnt"],
+                ),
+            ),
+            (
+                ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        ["Alex", "2022-01-01 09:01:00", None, None],
+                        ["Alex", "2022-01-01 09:02:00", 300.0, 2],
+                        ["Alex", "2022-01-01 09:05:00", 0.0, 0],
+                        ["Alex", "2022-01-01 09:07:00", 450.0, 1],
+                        ["Alex", "2022-01-01 09:09:00", 0.0, 0],
+                    ],
+                    columns=["name", "time", "last_2_minute_total_cost", "cnt"],
+                ),
+            ),
+        ]
+
+        for props, expected_result_df in expected_results:
+            features = SlidingFeatureView(
+                name="features",
+                source=source,
+                features=[
+                    Feature(
+                        name="last_2_minute_total_cost",
+                        dtype=Float64,
+                        transform=SlidingWindowTransform(
+                            expr="cost",
+                            agg_func="SUM",
+                            group_by_keys=["name"],
+                            window_size=timedelta(minutes=2),
+                            step_size=timedelta(minutes=1),
+                        ),
+                    ),
+                    Feature(
+                        name="cnt",
+                        dtype=Int64,
+                        transform=SlidingWindowTransform(
+                            expr="1",
+                            agg_func="COUNT",
+                            group_by_keys=["name"],
+                            window_size=timedelta(minutes=2),
+                            step_size=timedelta(minutes=1),
+                        ),
+                    ),
+                ],
+                props=props,
+            )
+
+            joined_feature = DerivedFeatureView(
+                name="joined_feature",
+                source=source2,
+                features=["features.last_2_minute_total_cost", "features.cnt"],
+                keep_source_fields=True,
+            )
+            self.client.build_features([features])
+
+            built_joined_feature = self.client.build_features([joined_feature])[0]
+
+            expected_result_df = expected_result_df.sort_values(
+                by=["name", "time"]
+            ).reset_index(drop=True)
+
+            result_df = (
+                self.client.get_features(features=built_joined_feature)
+                .to_pandas()
+                .sort_values(by=["name", "time"])
+                .reset_index(drop=True)
+            )
+
+            self.assertTrue(
+                expected_result_df.equals(result_df),
+                f"Failed with props: {props}\nexpected: {expected_result_df}\n"
+                f"actual: {result_df}",
+            )
+
     def test_transform_with_value_counts(self):
         df = pd.DataFrame(
             [
@@ -1174,7 +1304,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
         )
 
         schema = Schema(["name", "cost", "time"], [String, Float64, String])
-        source = self._create_file_source(df, schema=schema, keys=["name"])
+        source = self.create_file_source(df, schema=schema, keys=["name"])
 
         expected_results = [
             (
@@ -1336,7 +1466,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
         )
 
         schema = Schema(["name", "cost", "time"], [String, Float64, String])
-        source = self._create_file_source(
+        source = self.create_file_source(
             df, schema=schema, keys=["name"], timestamp_format="%Y-%m-%d %H:%M:%S"
         )
 
@@ -1493,9 +1623,308 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
                 f"actual: {result_df}",
             )
 
+    def test_sliding_window_with_python_udf(self):
+        df = self.input_data.copy()
+        source = self.create_file_source(df)
+
+        def name_to_lower(row: pd.Series) -> str:
+            return row["name"].lower()
+
+        f_lower_name = Feature(
+            name="lower_name", dtype=String, transform=PythonUdfTransform(name_to_lower)
+        )
+
+        f_total_cost = Feature(
+            name="total_cost",
+            dtype=Int64,
+            transform=SlidingWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                window_size=timedelta(days=3),
+                group_by_keys=["lower_name"],
+                step_size=timedelta(days=1),
+            ),
+        )
+
+        f_total_cost_sqrt = Feature(
+            name="total_cost_sqrt",
+            dtype=Float64,
+            transform=PythonUdfTransform(lambda row: sqrt(row["total_cost"])),
+        )
+
+        expected_results = [
+            (
+                ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "alex",
+                            100,
+                            sqrt(100),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "alex",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "alex",
+                            1000,
+                            sqrt(1000),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "alex",
+                            900,
+                            sqrt(900),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-05 23:59:59.999"),
+                            "alex",
+                            600,
+                            sqrt(600),
+                        ],
+                        [to_epoch_millis("2022-01-06 23:59:59.999"), "alex", 0, 0],
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "emma",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "emma",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "emma",
+                            200,
+                            sqrt(200),
+                        ],
+                        [to_epoch_millis("2022-01-05 23:59:59.999"), "emma", 0, 0],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [to_epoch_millis("2022-01-06 23:59:59.999"), "jack", 0, 0],
+                    ],
+                    columns=[
+                        "window_time",
+                        "lower_name",
+                        "total_cost",
+                        "total_cost_sqrt",
+                    ],
+                ),
+            ),
+            (
+                DISABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "alex",
+                            100,
+                            sqrt(100),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "alex",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "alex",
+                            1000,
+                            sqrt(1000),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "alex",
+                            900,
+                            sqrt(900),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-05 23:59:59.999"),
+                            "alex",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "emma",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "emma",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "emma",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "emma",
+                            200,
+                            sqrt(200),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-05 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                    ],
+                    columns=[
+                        "window_time",
+                        "lower_name",
+                        "total_cost",
+                        "total_cost_sqrt",
+                    ],
+                ),
+            ),
+            (
+                ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
+                pd.DataFrame(
+                    [
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "alex",
+                            100,
+                            sqrt(100),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "alex",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "alex",
+                            1000,
+                            sqrt(1000),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "alex",
+                            900,
+                            sqrt(900),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-05 23:59:59.999"),
+                            "alex",
+                            600,
+                            sqrt(600),
+                        ],
+                        [to_epoch_millis("2022-01-06 23:59:59.999"), "alex", 0, 0],
+                        [
+                            to_epoch_millis("2022-01-01 23:59:59.999"),
+                            "emma",
+                            400,
+                            sqrt(400),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-02 23:59:59.999"),
+                            "emma",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "emma",
+                            600,
+                            sqrt(600),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "emma",
+                            200,
+                            sqrt(200),
+                        ],
+                        [to_epoch_millis("2022-01-05 23:59:59.999"), "emma", 0, 0],
+                        [
+                            to_epoch_millis("2022-01-03 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-04 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [
+                            to_epoch_millis("2022-01-05 23:59:59.999"),
+                            "jack",
+                            500,
+                            sqrt(500),
+                        ],
+                        [to_epoch_millis("2022-01-06 23:59:59.999"), "jack", 0, 0],
+                    ],
+                    columns=[
+                        "window_time",
+                        "lower_name",
+                        "total_cost",
+                        "total_cost_sqrt",
+                    ],
+                ),
+            ),
+        ]
+
+        for props, expected_result_df in expected_results:
+            features = SlidingFeatureView(
+                name="features",
+                source=source,
+                features=[f_lower_name, f_total_cost, f_total_cost_sqrt],
+                props=props,
+            )
+
+            expected_result_df = expected_result_df.sort_values(
+                by=["lower_name", "window_time"]
+            ).reset_index(drop=True)
+
+            result_df = (
+                self.client.get_features(features)
+                .to_pandas()
+                .sort_values(by=["lower_name", "window_time"])
+                .reset_index(drop=True)
+            )
+            self.assertTrue(
+                expected_result_df.equals(result_df),
+                f"Failed with props: {props}\nexpected: {expected_result_df}\n"
+                f"actual: {result_df}",
+            )
+
     def test_multiple_window_size_with_same_step(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         f_total_cost_two_days = Feature(
             name="total_cost_two_days",

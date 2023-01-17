@@ -44,7 +44,7 @@ class LocalProcessorITTest(
     __test__ = True
 
     def get_client(self) -> FeathubClient:
-        return self._get_local_client(
+        return self.get_local_client(
             {
                 "type": "local",
             }
@@ -52,7 +52,7 @@ class LocalProcessorITTest(
 
     def test_file_source(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
         result_df = self.client.get_features(features=source).to_pandas()
         self.assertTrue(df.equals(result_df))
 
@@ -93,4 +93,7 @@ class LocalProcessorITTest(
         pass
 
     def test_over_window_transform_with_different_criteria(self):
+        pass
+
+    def test_over_window_on_join_field(self):
         pass

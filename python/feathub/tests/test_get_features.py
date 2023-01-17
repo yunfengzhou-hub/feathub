@@ -29,19 +29,14 @@ def _to_timestamp(datetime_str):
 
 
 class GetFeaturesITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify FeathubClient#get_features in
-    different situations.
-    """
-
     def test_get_table_from_file_source(self):
-        source = self._create_file_source(self.input_data.copy())
+        source = self.create_file_source(self.input_data.copy())
         table = self.client.get_features(features=source)
         df = table.to_pandas()
         self.assertTrue(self.input_data.equals(df))
 
     def test_get_table_with_single_key(self):
-        source = self._create_file_source(self.input_data.copy(), keys=["name"])
+        source = self.create_file_source(self.input_data.copy(), keys=["name"])
         keys = pd.DataFrame(
             [
                 ["Alex"],
@@ -73,7 +68,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
 
     def test_get_table_with_multiple_keys(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
+        source = self.create_file_source(df, keys=["name"])
         keys = pd.DataFrame(
             [
                 ["Alex", 100],
@@ -104,7 +99,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
 
     def test_get_table_with_non_exist_key(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
+        source = self.create_file_source(df, keys=["name"])
         keys = pd.DataFrame(
             [
                 ["Alex", 100],
@@ -120,7 +115,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
 
     def test_get_table_with_start_datetime(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
+        source = self.create_file_source(df, keys=["name"])
         start_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
@@ -146,7 +141,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
 
     def test_get_table_with_end_datetime(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df, keys=["name"])
+        source = self.create_file_source(df, keys=["name"])
         end_datetime = _to_timestamp("2022-01-02 08:03:00")
 
         result_df = (
@@ -171,7 +166,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
     def test_get_table_missing_timestamp(self):
         df = self.input_data.copy()
         df = df.drop(columns=["time"])
-        source = self._create_file_source(df, keys=["name"], timestamp_field=None)
+        source = self.create_file_source(df, keys=["name"], timestamp_field=None)
         _datetime = datetime.strptime("2022-01-02 08:03:00", "%Y-%m-%d %H:%M:%S")
 
         with self.assertRaises(FeathubException):
@@ -192,7 +187,7 @@ class GetFeaturesITTest(ABC, FeathubITTestBase):
 
     def test_keep_source(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source = self.create_file_source(df)
 
         f_cost_per_mile = Feature(
             name="cost_per_mile",

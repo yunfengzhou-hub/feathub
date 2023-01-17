@@ -29,10 +29,6 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class RedisSourceSinkITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify RedisSource and RedisSink.
-    """
-
     redis_container = None
 
     def test_redis_sink(self):
@@ -53,7 +49,7 @@ class RedisSourceSinkITTest(ABC, FeathubITTestBase):
             .build()
         )
 
-        source = self._create_file_source(
+        source = self.create_file_source(
             input_data,
             keys=["id"],
             schema=schema,

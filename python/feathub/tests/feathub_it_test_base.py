@@ -29,7 +29,7 @@ from feathub.table.schema import Schema
 
 class FeathubITTestBase(unittest.TestCase):
     """
-    Abstract base class for all processor integration tests. A child class of
+    Abstract base class for all Feathub integration tests. A child class of
     this class must have its test cases use Feathub public APIs to get and write
     features, and instantiate the corresponding FeathubClient instance.
 
@@ -43,7 +43,7 @@ class FeathubITTestBase(unittest.TestCase):
 
     def setUp(self) -> None:
         self.temp_dir = tempfile.mkdtemp()
-        self.input_data, self.schema = self._create_input_data_and_schema()
+        self.input_data, self.schema = self.create_input_data_and_schema()
         self.client = self.get_client()
 
     def tearDown(self) -> None:
@@ -58,7 +58,7 @@ class FeathubITTestBase(unittest.TestCase):
         pass
 
     @staticmethod
-    def _get_local_client(processor_config: Dict) -> FeathubClient:
+    def get_local_client(processor_config: Dict) -> FeathubClient:
         return FeathubClient(
             props={
                 "processor": processor_config,
@@ -79,7 +79,7 @@ class FeathubITTestBase(unittest.TestCase):
             }
         )
 
-    def _create_file_source(
+    def create_file_source(
         self,
         df: pd.DataFrame,
         keys: Optional[List[str]] = None,
@@ -94,7 +94,7 @@ class FeathubITTestBase(unittest.TestCase):
         df.to_csv(path, index=False, header=False)
 
         if name is None:
-            name = self._generate_random_name("source")
+            name = self.generate_random_name("source")
 
         return FileSystemSource(
             name=name,
@@ -106,7 +106,13 @@ class FeathubITTestBase(unittest.TestCase):
             timestamp_format=timestamp_format,
         )
 
-    def _create_input_data_and_schema(self):
+    @classmethod
+    def generate_random_name(cls, root_name: str) -> str:
+        random_name = f"{root_name}_{str(uuid.uuid4()).replace('-', '')}"
+        return random_name
+
+    @classmethod
+    def create_input_data_and_schema(cls):
         input_data = pd.DataFrame(
             [
                 ["Alex", 100, 100, "2022-01-01 08:01:00"],
@@ -119,11 +125,12 @@ class FeathubITTestBase(unittest.TestCase):
             columns=["name", "cost", "distance", "time"],
         )
 
-        schema = self._create_input_schema()
+        schema = cls._create_input_schema()
 
         return input_data, schema
 
-    def _create_input_data_and_schema_with_millis_time_span(self):
+    @classmethod
+    def create_input_data_and_schema_with_millis_time_span(cls):
         input_data = pd.DataFrame(
             [
                 ["Alex", 100, 100, "2022-01-01 08:00:00.001"],
@@ -136,12 +143,12 @@ class FeathubITTestBase(unittest.TestCase):
             columns=["name", "cost", "distance", "time"],
         )
 
-        schema = self._create_input_schema()
+        schema = cls._create_input_schema()
 
         return input_data, schema
 
-    @staticmethod
-    def _create_input_schema():
+    @classmethod
+    def _create_input_schema(cls):
         return (
             Schema.new_builder()
             .column("name", types.String)
@@ -150,8 +157,3 @@ class FeathubITTestBase(unittest.TestCase):
             .column("time", types.String)
             .build()
         )
-
-    @staticmethod
-    def _generate_random_name(root_name: str) -> str:
-        random_name = f"{root_name}_{str(uuid.uuid4()).replace('-', '')}"
-        return random_name

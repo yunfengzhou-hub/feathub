@@ -25,13 +25,9 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class JoinTransformITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify JoinTransform.
-    """
-
     def test_join_transform(self):
         df_1 = self.input_data.copy()
-        source = self._create_file_source(df_1)
+        source = self.create_file_source(df_1)
         feature_view_1 = DerivedFeatureView(
             name="feature_view_1",
             source=source,
@@ -61,7 +57,7 @@ class JoinTransformITTest(ABC, FeathubITTestBase):
             ],
             columns=["name", "avg_cost", "time"],
         )
-        source_2 = self._create_file_source(
+        source_2 = self.create_file_source(
             df_2,
             schema=Schema(["name", "avg_cost", "time"], [String, Float64, String]),
             timestamp_format="%Y-%m-%d,%H:%M:%S",
@@ -157,3 +153,69 @@ class JoinTransformITTest(ABC, FeathubITTestBase):
             "not supported.",
             cm.exception.args[0],
         )
+
+    def test_expression_transform_on_joined_field(self):
+        df_1 = self.input_data.copy()
+        source = self.create_file_source(df_1)
+
+        df_2 = pd.DataFrame(
+            [
+                ["Alex", 100.0, "2022-01-01,09:01:00"],
+                ["Emma", 400.0, "2022-01-01,09:02:00"],
+                ["Alex", 200.0, "2022-01-02,09:03:00"],
+                ["Emma", 300.0, "2022-01-02,09:04:00"],
+                ["Jack", 500.0, "2022-01-03,09:05:00"],
+                ["Alex", 450.0, "2022-01-03,09:06:00"],
+            ],
+            columns=["name", "avg_cost", "time"],
+        )
+        source_2 = self.create_file_source(
+            df_2,
+            schema=Schema(["name", "avg_cost", "time"], [String, Float64, String]),
+            timestamp_format="%Y-%m-%d,%H:%M:%S",
+            keys=["name"],
+        )
+        feature_view_2 = DerivedFeatureView(
+            name="feature_view_2",
+            source=source,
+            features=[
+                Feature(
+                    name="cost",
+                    dtype=Int64,
+                    transform="cost",
+                ),
+                "distance",
+                f"{source_2.name}.avg_cost",
+                Feature(
+                    name="derived_cost",
+                    dtype=Float64,
+                    transform="avg_cost * distance",
+                ),
+            ],
+            keep_source_fields=False,
+        )
+
+        [_, built_feature_view_2] = self.client.build_features(
+            [source_2, feature_view_2]
+        )
+
+        expected_result_df = df_1
+        expected_result_df["avg_cost"] = pd.Series(
+            [None, None, 100.0, 400.0, None, 200.0]
+        )
+        expected_result_df["derived_cost"] = pd.Series(
+            [None, None, 20000.0, 100000.0, None, 160000.0]
+        )
+        expected_result_df = expected_result_df.sort_values(
+            by=["name", "time"]
+        ).reset_index(drop=True)
+
+        result_df = (
+            self.client.get_features(features=built_feature_view_2)
+            .to_pandas()
+            .sort_values(by=["name", "time"])
+            .reset_index(drop=True)
+        )
+
+        self.assertListEqual(["name"], built_feature_view_2.keys)
+        self.assertTrue(expected_result_df.equals(result_df))

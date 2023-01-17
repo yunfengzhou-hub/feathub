@@ -20,10 +20,6 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class ExpressionTransformITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify ExpressionTransform.
-    """
-
     def test_expression_transform(self):
         self._test_expression_transform(False)
 
@@ -31,7 +27,7 @@ class ExpressionTransformITTest(ABC, FeathubITTestBase):
         self._test_expression_transform(True)
 
     def _test_expression_transform(self, keep_source_fields: bool):
-        source = self._create_file_source(self.input_data.copy())
+        source = self.create_file_source(self.input_data.copy())
 
         f_cost_per_mile = Feature(
             name="cost_per_mile",

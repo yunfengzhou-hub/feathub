@@ -24,15 +24,11 @@ from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 class OnlineFeaturesITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify online features.
-    """
-
     def test_materialize_features_with_inconsistent_dtypes(self):
         table_name = "table_name_1"
         sink = MemoryStoreSink(table_name=table_name)
 
-        source_1 = self._create_file_source(self.input_data, keys=["name"])
+        source_1 = self.create_file_source(self.input_data, keys=["name"])
         self.client.materialize_features(
             features=source_1,
             sink=sink,
@@ -54,9 +50,7 @@ class OnlineFeaturesITTest(ABC, FeathubITTestBase):
             .column("time", types.String)
             .build()
         )
-        source_2 = self._create_file_source(
-            input_data_2, schema=schema_2, keys=["name"]
-        )
+        source_2 = self.create_file_source(input_data_2, schema=schema_2, keys=["name"])
 
         try:
             self.client.materialize_features(
@@ -177,7 +171,7 @@ class OnlineFeaturesITTest(ABC, FeathubITTestBase):
     ) -> pd.DataFrame:
         sink = MemoryStoreSink(table_name=table_name)
 
-        source = self._create_file_source(input_data, keys=["name"])
+        source = self.create_file_source(input_data, keys=["name"])
         self.client.materialize_features(
             features=source,
             sink=sink,

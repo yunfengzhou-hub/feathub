@@ -69,10 +69,6 @@ class DataGenSourceTest(unittest.TestCase):
 
 
 class DataGenSourceITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify DataGenSource.
-    """
-
     def test_data_gen_source(self):
         source = DataGenSource(
             name="datagen_src",

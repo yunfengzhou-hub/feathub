@@ -32,10 +32,7 @@ class FileSystemSourceTest(unittest.TestCase):
 
 
 class FileSystemSourceSinkITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify FileSystemSource and FileSystemSink.
-    """
-
+    pass
     # TODO: unify the structure of files written out by different processors.
 
     # TODO: Add test case to verify allow_overwrite.

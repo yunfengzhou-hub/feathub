@@ -52,10 +52,6 @@ class KafkaSourceTest(unittest.TestCase):
 
 
 class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
-    """
-    Base class that provides test cases to verify KafkaSource and KafkaSink.
-    """
-
     kafka_container = None
 
     def test_kafka_source_sink(self):
@@ -173,7 +169,7 @@ class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
             cls.kafka_container = None
 
     def _produce_data_to_kafka(self, input_data: pd.DataFrame, schema: Schema):
-        source = self._create_file_source(
+        source = self.create_file_source(
             input_data,
             keys=["id"],
             schema=schema,
@@ -181,7 +177,7 @@ class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
             timestamp_format="%Y-%m-%d %H:%M:%S",
         )
 
-        topic_name = self._generate_random_name("kafka")
+        topic_name = self.generate_random_name("kafka")
 
         sink = KafkaSink(
             bootstrap_server=self._get_kafka_bootstrap_servers(),
