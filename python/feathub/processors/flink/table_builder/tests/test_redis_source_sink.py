@@ -22,7 +22,8 @@ from feathub.processors.flink.table_builder.source_sink_utils import (
     insert_into_sink,
 )
 from feathub.processors.flink.table_builder.tests.mock_table_descriptor import (
-    MockTableDescriptor, FlinkTableBuilderTestBase,
+    MockTableDescriptor,
+    FlinkTableBuilderTestBase,
 )
 from feathub.table.table_descriptor import TableDescriptor
 
