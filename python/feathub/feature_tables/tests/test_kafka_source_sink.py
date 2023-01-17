@@ -11,31 +11,52 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+import unittest
+from abc import ABC
 from datetime import datetime
 
 import pandas as pd
 from testcontainers.kafka import KafkaContainer
 
 from feathub.common import types
-from feathub.feathub_client import FeathubClient
+from feathub.common.types import Int64
 from feathub.feature_tables.sinks.kafka_sink import KafkaSink
 from feathub.feature_tables.sources.kafka_source import KafkaSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class KafkaSourceSinkTestBase(FeathubTestBase):
+class KafkaSourceTest(unittest.TestCase):
+    def test_get_bounded_feature_table(self):
+        source = KafkaSource(
+            "source",
+            "bootstrap_server",
+            "topic",
+            None,
+            "csv",
+            Schema.new_builder().column("x", Int64).column("y", Int64).build(),
+            "consumer_group",
+        )
+        self.assertFalse(source.is_bounded())
+
+        bounded_source = source.get_bounded_view()
+        self.assertTrue(bounded_source.is_bounded())
+
+        source_json = source.to_json()
+        source_json.pop("is_bounded")
+        bounded_source_json = bounded_source.to_json()
+        bounded_source_json.pop("is_bounded")
+
+        self.assertEqual(source_json, bounded_source_json)
+
+
+class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify KafkaSource and KafkaSink.
     """
 
     kafka_container = None
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_kafka_source_sink(self):
         input_data = pd.DataFrame(

@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 from datetime import timedelta
 from math import sqrt
 
@@ -19,7 +19,6 @@ import pandas as pd
 
 from feathub.common.test_utils import to_epoch_millis
 from feathub.common.types import Float64, String, Int64
-from feathub.feathub_client import FeathubClient
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
@@ -28,23 +27,19 @@ from feathub.feature_views.transforms.python_udf_transform import PythonUdfTrans
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
-from feathub.processors.tests.sliding_window_transform_test_base import (
+from feathub.feature_views.transforms.tests.test_sliding_window_transform import (
     ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT,
     DISABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
     ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT,
 )
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class MixedTransformTestBase(FeathubTestBase):
+class MixedTransformITTest(ABC, FeathubITTestBase):
     """
     Base class that verifies two or more transformations in one test case.
     """
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_python_udf_transform_on_over_window_transform(self):
         df, schema = self._create_input_data_and_schema_with_millis_time_span()

@@ -11,7 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 from datetime import datetime
 
 import pandas as pd
@@ -23,22 +23,17 @@ from feathub.common.utils import (
     serialize_object_with_protobuf,
     to_unix_timestamp,
 )
-from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.redis_sink import RedisSink
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class RedisSourceSinkTestBase(FeathubTestBase):
+class RedisSourceSinkITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify RedisSource and RedisSink.
     """
 
     redis_container = None
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_redis_sink(self):
         input_data = pd.DataFrame(

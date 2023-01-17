@@ -11,33 +11,28 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 from datetime import datetime
 
 import pandas as pd
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import Float64
-from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.memory_store_source import MemoryStoreSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
 def _to_timestamp(datetime_str):
     return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
 
 
-class GetFeaturesTestBase(FeathubTestBase):
+class GetFeaturesITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify FeathubClient#get_features in
     different situations.
     """
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_get_table_from_file_source(self):
         source = self._create_file_source(self.input_data.copy())

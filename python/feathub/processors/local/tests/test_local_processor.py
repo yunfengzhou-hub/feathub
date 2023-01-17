@@ -13,31 +13,33 @@
 # limitations under the License.
 from feathub.feathub_client import FeathubClient
 
-from feathub.processors.tests.expression_transform_test_base import (
-    ExpressionTransformTestBase,
+from feathub.feature_views.transforms.tests.test_expression_transform import (
+    ExpressionTransformITTest,
 )
-from feathub.processors.tests.file_system_source_sink_test_base import (
-    FileSystemSourceSinkTestBase,
+from feathub.feature_tables.tests.test_file_system_source_sink import (
+    FileSystemSourceSinkITTest,
 )
-from feathub.processors.tests.get_features_test_base import GetFeaturesTestBase
-from feathub.processors.tests.join_transform_test_base import JoinTransformTestBase
-from feathub.processors.tests.online_features_test_base import OnlineFeaturesTestBase
-from feathub.processors.tests.over_window_transform_test_base import (
-    OverWindowTransformTestBase,
+from feathub.tests.test_get_features import GetFeaturesITTest
+from feathub.feature_views.transforms.tests.test_join_transform import (
+    JoinTransformITTest,
 )
-from feathub.processors.tests.python_udf_transform_test_base import (
-    PythonUDFTransformTestBase,
+from feathub.tests.test_online_features import OnlineFeaturesITTest
+from feathub.feature_views.transforms.tests.test_over_window_transform import (
+    OverWindowTransformITTest,
+)
+from feathub.feature_views.transforms.tests.test_python_udf_transform import (
+    PythonUDFTransformITTest,
 )
 
 
-class LocalProcessorTest(
-    ExpressionTransformTestBase,
-    FileSystemSourceSinkTestBase,
-    GetFeaturesTestBase,
-    JoinTransformTestBase,
-    OnlineFeaturesTestBase,
-    OverWindowTransformTestBase,
-    PythonUDFTransformTestBase,
+class LocalProcessorITTest(
+    ExpressionTransformITTest,
+    FileSystemSourceSinkITTest,
+    GetFeaturesITTest,
+    JoinTransformITTest,
+    OnlineFeaturesITTest,
+    OverWindowTransformITTest,
+    PythonUDFTransformITTest,
 ):
     __test__ = True
 

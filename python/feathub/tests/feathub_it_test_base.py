@@ -27,7 +27,7 @@ from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.table.schema import Schema
 
 
-class FeathubTestBase(unittest.TestCase):
+class FeathubITTestBase(unittest.TestCase):
     """
     Abstract base class for all processor integration tests. A child class of
     this class must have its test cases use Feathub public APIs to get and write

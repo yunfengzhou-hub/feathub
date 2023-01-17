@@ -11,28 +11,23 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 
 import pandas as pd
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import Int64, String, Float64
-from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sources.datagen_source import DataGenSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class JoinTransformTestBase(FeathubTestBase):
+class JoinTransformITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify JoinTransform.
     """
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_join_transform(self):
         df_1 = self.input_data.copy()

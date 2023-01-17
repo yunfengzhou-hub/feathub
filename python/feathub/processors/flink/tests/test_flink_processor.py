@@ -25,44 +25,52 @@ from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
-from feathub.processors.tests.datagen_source_test_base import DataGenSourceTestBase
-from feathub.processors.tests.expression_transform_test_base import (
-    ExpressionTransformTestBase,
+from feathub.feature_tables.tests.test_datagen_source import DataGenSourceITTest
+from feathub.feature_views.transforms.tests.test_expression_transform import (
+    ExpressionTransformITTest,
 )
-from feathub.processors.tests.file_system_source_sink_test_base import (
-    FileSystemSourceSinkTestBase,
+from feathub.feature_tables.tests.test_file_system_source_sink import (
+    FileSystemSourceSinkITTest,
 )
-from feathub.processors.tests.get_features_test_base import GetFeaturesTestBase
-from feathub.processors.tests.join_transform_test_base import JoinTransformTestBase
-from feathub.processors.tests.kafka_source_sink_test_base import (
-    KafkaSourceSinkTestBase,
+from feathub.tests.test_get_features import GetFeaturesITTest
+from feathub.feature_views.transforms.tests.test_join_transform import (
+    JoinTransformITTest,
 )
-from feathub.processors.tests.mixed_transform_test_base import MixedTransformTestBase
-from feathub.processors.tests.over_window_transform_test_base import (
-    OverWindowTransformTestBase,
+from feathub.feature_tables.tests.test_kafka_source_sink import (
+    KafkaSourceSinkITTest,
 )
-from feathub.processors.tests.print_sink_test_base import PrintSinkTestBase
-from feathub.processors.tests.redis_source_sink_test_base import (
-    RedisSourceSinkTestBase,
+from feathub.feature_views.transforms.tests.test_mixed_transform import (
+    MixedTransformITTest,
 )
-from feathub.processors.tests.sliding_window_transform_test_base import (
-    SlidingWindowTransformTestBase,
+from feathub.feature_views.transforms.tests.test_over_window_transform import (
+    OverWindowTransformITTest,
+)
+from feathub.feature_tables.tests.test_print_sink import PrintSinkITTest
+from feathub.feature_views.transforms.tests.test_python_udf_transform import (
+    PythonUDFTransformITTest,
+)
+from feathub.feature_tables.tests.test_redis_source_sink import (
+    RedisSourceSinkITTest,
+)
+from feathub.feature_views.transforms.tests.test_sliding_window_transform import (
+    SlidingWindowTransformITTest,
 )
 from feathub.table.schema import Schema
 
 
-class FlinkProcessorTest(
-    DataGenSourceTestBase,
-    ExpressionTransformTestBase,
-    FileSystemSourceSinkTestBase,
-    GetFeaturesTestBase,
-    JoinTransformTestBase,
-    KafkaSourceSinkTestBase,
-    MixedTransformTestBase,
-    OverWindowTransformTestBase,
-    PrintSinkTestBase,
-    RedisSourceSinkTestBase,
-    SlidingWindowTransformTestBase,
+class FlinkProcessorITTest(
+    DataGenSourceITTest,
+    ExpressionTransformITTest,
+    FileSystemSourceSinkITTest,
+    GetFeaturesITTest,
+    JoinTransformITTest,
+    KafkaSourceSinkITTest,
+    MixedTransformITTest,
+    OverWindowTransformITTest,
+    PrintSinkITTest,
+    PythonUDFTransformITTest,
+    RedisSourceSinkITTest,
+    SlidingWindowTransformITTest,
 ):
     __test__ = True
 
@@ -93,8 +101,8 @@ class FlinkProcessorTest(
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        KafkaSourceSinkTestBase.tearDown(self)
-        RedisSourceSinkTestBase.tearDown(self)
+        KafkaSourceSinkITTest.tearDown(self)
+        RedisSourceSinkITTest.tearDown(self)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -104,7 +112,7 @@ class FlinkProcessorTest(
     def get_client(self) -> FeathubClient:
         return self.client
 
-    def test_read_write(self) -> None:
+    def test_read_write(self):
         source = self._create_file_source(self.input_data)
 
         sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name

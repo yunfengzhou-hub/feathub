@@ -11,27 +11,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 from typing import List, Optional
 
 import pandas as pd
 
 from feathub.common import types
-from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.memory_store_sink import MemoryStoreSink
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class OnlineFeaturesTestBase(FeathubTestBase):
+class OnlineFeaturesITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify online features.
     """
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_materialize_features_with_inconsistent_dtypes(self):
         table_name = "table_name_1"

@@ -11,14 +11,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from abc import abstractmethod
+from abc import ABC
 from datetime import timedelta
 
 import pandas as pd
 
 from feathub.common.test_utils import to_epoch_millis, to_epoch
 from feathub.common.types import Int64, String, Float64, MapType, Float32
-from feathub.feathub_client import FeathubClient
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
@@ -28,8 +27,8 @@ from feathub.feature_views.sliding_feature_view import (
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.tests.feathub_test_base import FeathubTestBase
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT = {
     ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG: True,
@@ -45,14 +44,10 @@ ENABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT = {
 }
 
 
-class SlidingWindowTransformTestBase(FeathubTestBase):
+class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
     """
     Base class that provides test cases to verify SlidingWindowTransform.
     """
-
-    @abstractmethod
-    def get_client(self) -> FeathubClient:
-        pass
 
     def test_transform_without_key(self):
         df = self.input_data.copy()

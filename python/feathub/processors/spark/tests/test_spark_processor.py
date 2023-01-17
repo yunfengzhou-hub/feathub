@@ -18,19 +18,19 @@ import pandas as pd
 
 from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
-from feathub.processors.tests.expression_transform_test_base import (
-    ExpressionTransformTestBase,
+from feathub.feature_views.transforms.tests.test_expression_transform import (
+    ExpressionTransformITTest,
 )
-from feathub.processors.tests.file_system_source_sink_test_base import (
-    FileSystemSourceSinkTestBase,
+from feathub.feature_tables.tests.test_file_system_source_sink import (
+    FileSystemSourceSinkITTest,
 )
-from feathub.processors.tests.print_sink_test_base import PrintSinkTestBase
+from feathub.feature_tables.tests.test_print_sink import PrintSinkITTest
 
 
-class SparkProcessorTest(
-    ExpressionTransformTestBase,
-    FileSystemSourceSinkTestBase,
-    PrintSinkTestBase,
+class SparkProcessorITTest(
+    ExpressionTransformITTest,
+    FileSystemSourceSinkITTest,
+    PrintSinkITTest,
 ):
     __test__ = True
 
@@ -44,7 +44,7 @@ class SparkProcessorTest(
             }
         )
 
-    def test_file_system_source_sink(self) -> None:
+    def test_file_system_source_sink(self):
         source = self._create_file_source(self.input_data)
 
         sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
