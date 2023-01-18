@@ -56,9 +56,10 @@ class SparkAstEvaluator(AbstractAstEvaluator):
         return str(ast.value)
 
     def eval_func_call_op(self, ast: FuncCallOp, variables: Optional[Dict]) -> Any:
-        # TODO: Add support for Feathub built-in functions.
         args = [self.eval(v, variables) for v in ast.args.values]
-        return f"{ast.func_name}({', '.join(args)})"
+        if ast.func_name == "unix_timestamp":
+            return f"to_unix_timestamp({', '.join(args)})"
+        raise RuntimeError(f"Unsupported function: {ast.func_name}.")
 
     def eval_variable_node(self, ast: VariableNode, variables: Optional[Dict]) -> Any:
         return f"`{ast.var_name}`"
