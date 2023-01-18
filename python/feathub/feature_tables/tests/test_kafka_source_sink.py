@@ -102,6 +102,8 @@ class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
         )
         self.assertTrue(expected_result_df.equals(result_df))
 
+        self._tear_down_kafka()
+
     def test_bounded_kafka_source(self):
         input_data = pd.DataFrame(
             [
@@ -154,6 +156,8 @@ class KafkaSourceSinkITTest(ABC, FeathubITTestBase):
             input_data.copy().sort_values(by=["id"]).reset_index(drop=True)
         )
         self.assertTrue(expected_result_df.equals(result_df))
+
+        self._tear_down_kafka()
 
     @classmethod
     def _get_kafka_bootstrap_servers(cls):
