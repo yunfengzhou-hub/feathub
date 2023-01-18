@@ -16,7 +16,7 @@ import tempfile
 import unittest
 import uuid
 from abc import abstractmethod
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Type
 
 import pandas as pd
 
@@ -105,6 +105,42 @@ class FeathubITTestBase(unittest.TestCase):
             timestamp_field=timestamp_field,
             timestamp_format=timestamp_format,
         )
+
+    # TODO: only invoke the corresponding base class's setUpClass()
+    #  method to reduce resource consumption.
+    @classmethod
+    def invoke_all_base_class_setupclass(cls):
+        for base_class in cls.__bases__:
+            if issubclass(base_class, unittest.TestCase):
+                base_class.setUpClass()
+
+    @classmethod
+    def invoke_all_base_class_teardownclass(cls):
+        for base_class in cls.__bases__:
+            if issubclass(base_class, unittest.TestCase):
+                base_class.tearDownClass()
+
+    def invoke_base_class_setup_if_any(self):
+        base_class = self._get_base_test_class()
+        if base_class is not None:
+            base_class.setUp(self)
+
+    def invoke_base_class_teardown_if_any(self):
+        base_class = self._get_base_test_class()
+        if base_class is not None:
+            base_class.tearDown(self)
+
+    def _get_base_test_class(self) -> Optional[Type[unittest.TestCase]]:
+        for base_class in self.__class__.__bases__:
+            method_list = [
+                func for func in dir(base_class) if callable(getattr(base_class, func))
+            ]
+            if (
+                issubclass(base_class, unittest.TestCase)
+                and self._testMethodName in method_list
+            ):
+                return base_class
+        return None
 
     @classmethod
     def generate_random_name(cls, root_name: str) -> str:
