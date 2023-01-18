@@ -21,7 +21,7 @@ from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.processors.flink.table_builder.source_sink_utils import (
     insert_into_sink,
 )
-from feathub.processors.flink.table_builder.tests.mock_table_descriptor import (
+from feathub.processors.flink.table_builder.tests.flink_table_builder_test_utils import (
     MockTableDescriptor,
     FlinkTableBuilderTestBase,
 )

@@ -26,15 +26,15 @@ from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.feature_tables.sources.redis_source import RedisSource
 from feathub.feature_views.on_demand_feature_view import OnDemandFeatureView
 from feathub.processors.flink.table_builder.source_sink_utils import insert_into_sink
-from feathub.processors.flink.table_builder.tests.mock_table_descriptor import (
-    MockTableDescriptor,
+from feathub.processors.flink.table_builder.tests.flink_table_builder_test_utils import (
+    MockTableDescriptor, FlinkTableBuilderTestBase,
 )
 from feathub.table.schema import Schema
 from feathub.table.table_descriptor import TableDescriptor
 
 
 # TODO: Restructure these test cases in a way similar to ProcessorTestBase.
-class RedisClientTest(unittest.TestCase):
+class RedisClientTest(FlinkTableBuilderTestBase):
     redis_container: RedisContainer = None
 
     def __init__(self, method_name: str):
