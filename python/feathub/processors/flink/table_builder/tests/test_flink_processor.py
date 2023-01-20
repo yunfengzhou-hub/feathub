@@ -589,3 +589,6 @@ class FlinkProcessorITTest(
 
     def test_random_field_length(self):
         pass
+
+    def test_unix_timestamp_with_timezone(self):
+        pass

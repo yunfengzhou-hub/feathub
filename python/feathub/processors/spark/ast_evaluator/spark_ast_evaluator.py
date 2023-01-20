@@ -13,6 +13,7 @@
 #  limitations under the License.
 from typing import Optional, Dict, Any
 
+from feathub.common.utils import to_java_date_format
 from feathub.dsl.abstract_ast_evaluator import AbstractAstEvaluator
 from feathub.dsl.ast import (
     LogicalOp,
@@ -56,9 +57,12 @@ class SparkAstEvaluator(AbstractAstEvaluator):
         return str(ast.value)
 
     def eval_func_call_op(self, ast: FuncCallOp, variables: Optional[Dict]) -> Any:
-        # TODO: Add support for Feathub built-in functions.
         args = [self.eval(v, variables) for v in ast.args.values]
-        return f"{ast.func_name}({', '.join(args)})"
+        if ast.func_name.upper() == "UNIX_TIMESTAMP":
+            if len(args) > 1:
+                args[1] = to_java_date_format(args[1])
+            return f"TO_UNIX_TIMESTAMP({', '.join(args)})"
+        raise RuntimeError(f"Unsupported function: {ast.func_name}.")
 
     def eval_variable_node(self, ast: VariableNode, variables: Optional[Dict]) -> Any:
         return f"`{ast.var_name}`"
