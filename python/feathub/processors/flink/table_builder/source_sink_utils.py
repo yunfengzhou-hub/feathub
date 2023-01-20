@@ -22,12 +22,14 @@ from feathub.common.exceptions import FeathubException
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_tables.sinks.black_hole_sink import BlackHoleSink
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
+from feathub.feature_tables.sinks.hbase_sink import HBaseSink
 from feathub.feature_tables.sinks.kafka_sink import KafkaSink
 from feathub.feature_tables.sinks.print_sink import PrintSink
 from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.feature_tables.sources.datagen_source import DataGenSource
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.feature_tables.sources.kafka_source import KafkaSource
+from feathub.processors.flink.hbase_utils import insert_into_hbase_sink
 from feathub.processors.flink.table_builder.black_hole_utils import (
     insert_into_black_hole_sink,
 )
@@ -87,5 +89,7 @@ def insert_into_sink(
         return insert_into_redis_sink(t_env, features_table, features_desc, sink)
     elif isinstance(sink, BlackHoleSink):
         return insert_into_black_hole_sink(features_table)
+    elif isinstance(sink, HBaseSink):
+        return insert_into_hbase_sink(t_env, features_table, features_desc, sink)
     else:
         raise FeathubException(f"Unsupported sink type {type(sink)}.")
