@@ -12,8 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from abc import ABC
+from datetime import datetime, timezone
 
 import pandas as pd
+import pytz
 
 from feathub.common.types import Float64, Int64, String
 from feathub.common.utils import to_unix_timestamp
@@ -97,22 +99,19 @@ class ExpressionTransformITTest(ABC, FeathubITTestBase):
 
         expected_result_df = self.input_data.copy()
         expected_result_df["unix_time"] = expected_result_df.apply(
-            lambda row: int(to_unix_timestamp(row["time"])), axis=1
+            lambda row: int(
+                to_unix_timestamp(row["time"])
+            ),
+            axis=1,
         )
         expected_result_df = expected_result_df.sort_values(by=["time"]).reset_index(
             drop=True
         )
 
-        delta_list = [
-            x - y
-            for x, y in zip(
-                result_df["unix_time"].tolist(),
-                expected_result_df["unix_time"].tolist(),
-            )
-        ]
+        print(expected_result_df)
+        print(result_df)
 
-        self.assertTrue(all(delta_list[0] == x for x in delta_list))
-        self.assertTrue(int(delta_list[0]) % 3600 == 0)
+        self.assertTrue(expected_result_df.equals(result_df))
 
     def test_unix_timestamp_with_timezone(self):
         input_data = pd.DataFrame(

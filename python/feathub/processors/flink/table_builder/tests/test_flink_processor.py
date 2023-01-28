@@ -397,6 +397,7 @@ class FlinkProcessorITTest(
                 "type": "flink",
                 "flink": {
                     "deployment_mode": "cli",
+                    "native.table.local-time-zone": "Asia/Shanghai",
                 },
             }
         )
@@ -452,19 +453,6 @@ class FlinkProcessorITTest(
             )
 
     def test_join_transform_with_zoned_timestamp(self):
-        # TODO: Add public API on Feathub Client/Processor to configure time zone,
-        #  then move this test case to JoinTransformTestBase
-        prev_client = self.client
-        self.client = self.get_local_client(
-            {
-                "type": "flink",
-                "flink": {
-                    "deployment_mode": "cli",
-                    "native.table.local-time-zone": "Asia/Shanghai",
-                },
-            }
-        )
-
         df_1 = pd.DataFrame(
             [
                 ["Alex", 100, 100, "2022-01-01 08:00:00.000"],
@@ -573,8 +561,6 @@ class FlinkProcessorITTest(
         self.assertListEqual(["name"], built_feature_view_2.keys)
         self.assertListEqual(["name"], built_feature_view_3.keys)
         self.assertTrue(expected_result_df.equals(result_df))
-
-        self.client = prev_client
 
     # TODO: Fix the bug that FlinkProcessor to_pandas does not support none values.
     def test_join_sliding_feature(self):

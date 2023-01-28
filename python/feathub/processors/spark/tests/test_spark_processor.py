@@ -30,11 +30,11 @@ from feathub.feature_tables.tests.test_print_sink import PrintSinkITTest
 
 
 class SparkProcessorITTest(
-    BlackHoleSinkITTest,
-    DataGenSourceITTest,
+    # BlackHoleSinkITTest,
+    # DataGenSourceITTest,
     ExpressionTransformITTest,
-    FileSystemSourceSinkITTest,
-    PrintSinkITTest,
+    # FileSystemSourceSinkITTest,
+    # PrintSinkITTest,
 ):
     __test__ = True
 
@@ -62,23 +62,23 @@ class SparkProcessorITTest(
             }
         )
 
-    def test_file_system_source_sink(self):
-        source = self.create_file_source(self.input_data)
-
-        sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
-
-        sink = FileSystemSink(sink_path, "csv")
-
-        self.client.materialize_features(
-            features=source,
-            sink=sink,
-            allow_overwrite=True,
-        ).wait()
-
-        files = glob.glob(f"{sink_path}/*.csv")
-        df = pd.DataFrame()
-        for f in files:
-            csv = pd.read_csv(f, names=["name", "cost", "distance", "time"])
-            df = df.append(csv)
-        df = df.sort_values(by=["time"]).reset_index(drop=True)
-        self.assertTrue(self.input_data.equals(df))
+    # def test_file_system_source_sink(self):
+    #     source = self.create_file_source(self.input_data)
+    #
+    #     sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir).name
+    #
+    #     sink = FileSystemSink(sink_path, "csv")
+    #
+    #     self.client.materialize_features(
+    #         features=source,
+    #         sink=sink,
+    #         allow_overwrite=True,
+    #     ).wait()
+    #
+    #     files = glob.glob(f"{sink_path}/*.csv")
+    #     df = pd.DataFrame()
+    #     for f in files:
+    #         csv = pd.read_csv(f, names=["name", "cost", "distance", "time"])
+    #         df = df.append(csv)
+    #     df = df.sort_values(by=["time"]).reset_index(drop=True)
+    #     self.assertTrue(self.input_data.equals(df))

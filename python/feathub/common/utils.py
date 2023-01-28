@@ -64,6 +64,7 @@ def to_unix_timestamp(
             )
     if time.tzinfo is None:
         time = time.replace(tzinfo=timezone.utc)
+    print("to_unix_timestamp " + str(time) + " " + str(time.timestamp()))
     return time.timestamp()
 
 

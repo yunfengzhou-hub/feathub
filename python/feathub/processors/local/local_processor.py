@@ -17,6 +17,8 @@ import numpy as np
 from typing import Dict, Optional, Union, List, Any
 from datetime import datetime, timedelta
 
+import pytz
+
 import feathub.common.utils as utils
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import to_numpy_dtype
@@ -24,6 +26,10 @@ from feathub.dsl.expr_parser import ExprParser
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.processors.local.ast_evaluator.local_ast_evaluator import LocalAstEvaluator
+from feathub.processors.local.local_processor_config import (
+    LocalProcessorConfig,
+    TIMEZONE_CONFIG,
+)
 from feathub.processors.processor import Processor
 from feathub.registries.registry import Registry
 from feathub.processors.local.local_job import LocalJob
@@ -99,10 +105,12 @@ class LocalProcessor(Processor):
                 df, features.timestamp_field, features.timestamp_format
             )
         if start_datetime is not None:
-            unix_start_datetime = utils.to_unix_timestamp(start_datetime)
+            unix_start_datetime = utils.to_unix_timestamp(
+                start_datetime, tz=self.timezone
+            )
             df = df[df[unix_time_column] >= unix_start_datetime]
         if end_datetime is not None:
-            unix_end_datetime = utils.to_unix_timestamp(end_datetime)
+            unix_end_datetime = utils.to_unix_timestamp(end_datetime, tz=self.timezone)
             df = df[df[unix_time_column] < unix_end_datetime]
         if unix_time_column is not None:
             df = df.drop(columns=[unix_time_column])
@@ -341,13 +349,15 @@ class LocalProcessor(Processor):
         # TODO: optimize the performance for the following code.
         for source_idx, source_row in source_df.iterrows():
             source_timestamp = utils.to_unix_timestamp(
-                source_row[source_timestamp_field], source_timestamp_format
+                source_row[source_timestamp_field],
+                source_timestamp_format,
+                self.timezone,
             )
             joined_value = None
             joined_timestamp = None
             for join_idx, join_row in join_df.iterrows():
                 join_timestamp = utils.to_unix_timestamp(
-                    join_row[join_timestamp_field], join_timestamp_format
+                    join_row[join_timestamp_field], join_timestamp_format, self.timezone
                 )
                 if join_timestamp > source_timestamp:
                     continue
