@@ -13,6 +13,9 @@
 #  limitations under the License.
 from typing import Dict, Tuple, List
 
+from feathub.feature_views.feature import Feature
+
+from feathub.feature_views.sliding_feature_view import SlidingFeatureView
 from pyspark.sql import DataFrame as NativeSparkDataFrame, functions
 from pyspark.sql import SparkSession
 from feathub.common.exceptions import (
@@ -34,6 +37,7 @@ from feathub.processors.spark.dataframe_builder.over_window_utils import (
     OverWindowDescriptor,
     evaluate_over_window_transform,
 )
+from feathub.processors.spark.dataframe_builder.sliding_window_utils import evaluate_sliding_window_transform
 from feathub.processors.spark.dataframe_builder.source_sink_utils import (
     get_dataframe_from_source,
 )
@@ -105,6 +109,8 @@ class SparkDataFrameBuilder:
             spark_dataframe = get_dataframe_from_source(self._spark_session, features)
         elif isinstance(features, DerivedFeatureView):
             spark_dataframe = self._get_dataframe_from_derived_feature_view(features)
+        elif isinstance(features, SlidingFeatureView):
+            spark_dataframe = self._get_dataframe_from_sliding_feature_view(features)
         else:
             raise FeathubException(
                 f"Unsupported type '{type(features).__name__}' for '{features}'."
@@ -120,17 +126,17 @@ class SparkDataFrameBuilder:
         source_dataframe = self._get_spark_dataframe(feature_view.get_resolved_source())
         tmp_dataframe = source_dataframe
 
-        dependent_features = []
+        dependent_features = self._get_dependent_features(feature_view)
         window_agg_map: Dict[
             OverWindowDescriptor, List[AggregationFieldDescriptor]
         ] = {}
 
-        for feature in feature_view.get_resolved_features():
-            for input_feature in feature.input_features:
-                if input_feature not in dependent_features:
-                    dependent_features.append(input_feature)
-            if feature not in dependent_features:
-                dependent_features.append(feature)
+        # for feature in feature_view.get_resolved_features():
+        #     for input_feature in feature.input_features:
+        #         if input_feature not in dependent_features:
+        #             dependent_features.append(input_feature)
+        #     if feature not in dependent_features:
+        #         dependent_features.append(feature)
 
         # This list contains all per-row transform features listed after the first
         # OverWindowTransform feature in the dependent_features. These features
@@ -195,6 +201,35 @@ class SparkDataFrameBuilder:
             source_fields=source_dataframe.schema.fieldNames()
         )
         return tmp_dataframe.select(output_fields)
+
+    def _get_dataframe_from_sliding_feature_view(self, feature_view: SlidingFeatureView) -> NativeSparkDataFrame:
+        source_dataframe = self._get_spark_dataframe(feature_view.source)
+        source_fields = source_dataframe.schema.fieldNames()
+
+        dependent_features = self._get_dependent_features(feature_view)
+
+        window_agg_map: Dict[
+            OverWindowDescriptor, List[AggregationFieldDescriptor]
+        ] = {}
+
+        tmp_dataframe = source_dataframe
+        return evaluate_sliding_window_transform(
+                tmp_table,
+                window_descriptor,
+                agg_descriptors,
+                feature_view.config,
+            )
+
+    @staticmethod
+    def _get_dependent_features(feature_view: FeatureView) -> List[Feature]:
+        dependent_features = []
+        for feature in feature_view.get_resolved_features():
+            for input_feature in feature.input_features:
+                if input_feature not in dependent_features:
+                    dependent_features.append(input_feature)
+            if feature not in dependent_features:
+                dependent_features.append(feature)
+        return dependent_features
 
     @staticmethod
     def _evaluate_expression_transform(
