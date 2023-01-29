@@ -15,7 +15,7 @@ from typing import Dict, Tuple
 
 from pyspark.sql import DataFrame as NativeSparkDataFrame
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import expr as native_spark_expr
+from pyspark.sql.functions import expr as native_spark_expr, udf, struct
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import DType
@@ -23,6 +23,7 @@ from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
+from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.processors.spark.dataframe_builder.source_sink_utils import (
     get_dataframe_from_source,
 )
@@ -120,6 +121,16 @@ class SparkDataFrameBuilder:
                     feature.transform,
                     feature.name,
                     feature.dtype,
+                )
+            elif isinstance(feature.transform, PythonUdfTransform):
+                python_udf = udf(
+                    feature.transform.udf, returnType=to_spark_type(feature.dtype)
+                )
+                tmp_dataframe = tmp_dataframe.withColumn(
+                    feature.name,
+                    python_udf(
+                        struct([tmp_dataframe[x] for x in tmp_dataframe.columns])
+                    ),
                 )
             else:
                 raise RuntimeError(

@@ -20,13 +20,16 @@ from feathub.feathub_client import FeathubClient
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
 from feathub.feature_tables.tests.test_black_hole_sink import BlackHoleSinkITTest
 from feathub.feature_tables.tests.test_datagen_source import DataGenSourceITTest
-from feathub.feature_views.transforms.tests.test_expression_transform import (
-    ExpressionTransformITTest,
-)
 from feathub.feature_tables.tests.test_file_system_source_sink import (
     FileSystemSourceSinkITTest,
 )
 from feathub.feature_tables.tests.test_print_sink import PrintSinkITTest
+from feathub.feature_views.transforms.tests.test_expression_transform import (
+    ExpressionTransformITTest,
+)
+from feathub.feature_views.transforms.tests.test_python_udf_transform import (
+    PythonUDFTransformITTest,
+)
 
 
 class SparkProcessorITTest(
@@ -35,6 +38,7 @@ class SparkProcessorITTest(
     ExpressionTransformITTest,
     FileSystemSourceSinkITTest,
     PrintSinkITTest,
+    PythonUDFTransformITTest,
 ):
     __test__ = True
 
