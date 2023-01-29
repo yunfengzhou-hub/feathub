@@ -43,6 +43,9 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 def main() -> None:
     client = FeathubClient(
         props={
+            "common":  {
+                "timezone": "Asia/Shanghai"
+            },
             "processor": {
                 "type": "local",
                 "local": {},
