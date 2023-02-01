@@ -21,6 +21,7 @@ from pyflink.table import (
     Table as NativeFlinkTable,
     expressions as native_flink_expr,
 )
+from pyflink.table.expressions import lit
 from pyflink.table.types import _to_java_data_type, DataTypes
 
 from feathub.common.exceptions import FeathubTransformationException
@@ -33,7 +34,7 @@ from feathub.feature_views.transforms.agg_func import AggFunc
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.constants import EVENT_TIME_ATTRIBUTE_NAME
+from feathub.processors.constants import EVENT_TIME_ATTRIBUTE_NAME, EMPTY_WINDOW_ATTRIBUTE_NAME
 from feathub.processors.flink.table_builder.aggregation_utils import (
     AggregationFieldDescriptor,
     get_default_value_and_type,
@@ -221,10 +222,16 @@ def evaluate_sliding_window_transform(
 
     default_row = None
     if config.get(ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG):
+        flink_table = flink_table.add_or_replace_columns(
+            lit(False).alias(EMPTY_WINDOW_ATTRIBUTE_NAME)
+        )
+
         default_row = gateway.jvm.org.apache.flink.types.Row.withNames()
         for agg_descriptor in agg_descriptors:
             default_value, data_type = get_default_value_and_type(agg_descriptor)
             default_row.setField(agg_descriptor.field_name, default_value)
+
+        default_row.setField(EMPTY_WINDOW_ATTRIBUTE_NAME, True)
 
     # Java call to apply the SlidingWindowKeyedProcessorFunction to the table, the
     # SlidingWindowKeyedProcessorFunction also takes care of the
