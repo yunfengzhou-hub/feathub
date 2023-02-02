@@ -13,7 +13,7 @@
 #  limitations under the License.
 import unittest
 
-from feathub.dsl.ast import FuncCallOp, ArgListNode, VariableNode, ValueNode
+from feathub.dsl.ast import FuncCallOp, ArgListNode, VariableNode, ValueNode, LogicalOp
 from feathub.dsl.expr_parser import ExprParser
 
 
@@ -44,6 +44,15 @@ class ExprParserTest(unittest.TestCase):
                             value="%Y-%m-%d %H:%M:%S.%f %z",
                         ),
                     ]
+                ),
+            ),
+            "a AND b": LogicalOp(
+                op_type="AND",
+                left_child=VariableNode(
+                    var_name="a",
+                ),
+                right_child=VariableNode(
+                    var_name="b",
                 ),
             ),
         }
