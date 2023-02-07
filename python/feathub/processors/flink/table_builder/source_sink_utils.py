@@ -28,6 +28,7 @@ from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.feature_tables.sources.datagen_source import DataGenSource
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.feature_tables.sources.kafka_source import KafkaSource
+from feathub.processors.constants import EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX
 from feathub.processors.flink.table_builder.black_hole_utils import (
     insert_into_black_hole_sink,
 )
@@ -77,6 +78,9 @@ def insert_into_sink(
     """
     Insert the flink table to the given sink.
     """
+
+    features_table = _handle_empty_window_columns(features_table, sink)
+
     if isinstance(sink, FileSystemSink):
         return insert_into_file_sink(t_env, features_table, sink)
     elif isinstance(sink, KafkaSink):
@@ -89,3 +93,17 @@ def insert_into_sink(
         return insert_into_black_hole_sink(features_table)
     else:
         raise FeathubException(f"Unsupported sink type {type(sink)}.")
+
+
+def _handle_empty_window_columns(
+    table: NativeFlinkTable,
+    sink: FeatureTable,
+) -> NativeFlinkTable:
+    if isinstance(sink, RedisSink):
+        return table
+
+    empty_window_columns = []
+    for field_name in table.get_schema().get_field_names():
+        if field_name.startswith(EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX):
+            empty_window_columns.append(field_name)
+    return table.drop_columns(*empty_window_columns)
