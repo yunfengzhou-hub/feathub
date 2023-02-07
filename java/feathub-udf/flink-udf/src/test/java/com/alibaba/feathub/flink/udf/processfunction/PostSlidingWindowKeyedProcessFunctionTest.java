@@ -79,20 +79,22 @@ public class PostSlidingWindowKeyedProcessFunctionTest {
                                 + "GROUP BY id, window_start, window_end, window_time");
         final Row zeroValuedRow = Row.withNames();
         zeroValuedRow.setField("val_sum", 0);
-        table = postSlidingWindow(tEnv, table, 1000, zeroValuedRow, false, "ts", "id");
+        table =
+                postSlidingWindow(
+                        tEnv, table, 1000, zeroValuedRow, false, "ts", "__is_empty_window__", "id");
 
         List<Row> expected =
                 Arrays.asList(
-                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(999)),
-                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(1999)),
-                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(2999)),
-                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(4999)),
-                        Row.ofKind(RowKind.INSERT, 0, 7, Instant.ofEpochMilli(5999)),
-                        Row.ofKind(RowKind.INSERT, 0, 4, Instant.ofEpochMilli(6999)),
-                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(7999)),
-                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(999)),
-                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(1999)),
-                        Row.ofKind(RowKind.INSERT, 1, 0, Instant.ofEpochMilli(2999)));
+                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(1999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(2999), true),
+                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(4999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 7, Instant.ofEpochMilli(5999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 4, Instant.ofEpochMilli(6999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(7999), true),
+                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(999), false),
+                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(1999), false),
+                        Row.ofKind(RowKind.INSERT, 1, 0, Instant.ofEpochMilli(2999), true));
 
         List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
         sortResult(actual);
@@ -131,18 +133,20 @@ public class PostSlidingWindowKeyedProcessFunctionTest {
                                 + "GROUP BY id, window_start, window_end, window_time");
         final Row zeroValuedRow = Row.withNames();
         zeroValuedRow.setField("val_sum", 0);
-        table = postSlidingWindow(tEnv, table, 1000, zeroValuedRow, true, "ts", "id");
+        table =
+                postSlidingWindow(
+                        tEnv, table, 1000, zeroValuedRow, true, "ts", "__is_empty_window__", "id");
 
         List<Row> expected =
                 Arrays.asList(
-                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(999)),
-                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(2999)),
-                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(4999)),
-                        Row.ofKind(RowKind.INSERT, 0, 7, Instant.ofEpochMilli(5999)),
-                        Row.ofKind(RowKind.INSERT, 0, 4, Instant.ofEpochMilli(6999)),
-                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(7999)),
-                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(999)),
-                        Row.ofKind(RowKind.INSERT, 1, 0, Instant.ofEpochMilli(2999)));
+                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(2999), true),
+                        Row.ofKind(RowKind.INSERT, 0, 3, Instant.ofEpochMilli(4999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 7, Instant.ofEpochMilli(5999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 4, Instant.ofEpochMilli(6999), false),
+                        Row.ofKind(RowKind.INSERT, 0, 0, Instant.ofEpochMilli(7999), true),
+                        Row.ofKind(RowKind.INSERT, 1, 3, Instant.ofEpochMilli(999), false),
+                        Row.ofKind(RowKind.INSERT, 1, 0, Instant.ofEpochMilli(2999), true));
 
         List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
         sortResult(actual);

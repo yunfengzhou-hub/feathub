@@ -19,6 +19,7 @@ package com.alibaba.feathub.flink.udf.processfunction;
 import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -34,6 +35,9 @@ import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * The KeyedProcessFunction that is used after the Flink SQL Sliding Window operation by Feathub.
@@ -51,10 +55,12 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
     private final long windowStepSizeMs;
     private final TypeSerializer<Row> keySerializer;
     private final TypeSerializer<Row> rowTypeSerializer;
-    private final ExternalTypeInfo<Row> rowTypeInfo;
+    private final TypeInformation<Row> outputTypeInfo;
 
     private final String rowTimeFieldName;
     private final PostSlidingWindowExpiredRowHandler expiredRowHandler;
+    private final String emptyWindowFieldNamePrefix;
+    private final String[] aggFieldNames;
     private final boolean skipSameWindowOutput;
 
     private MapState<Row, Tuple2<Long, Row>> lastRowState;
@@ -64,11 +70,15 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
             long windowStepSizeMs,
             String[] keyFieldNames,
             String rowTimeFieldName,
+            String[] aggFieldNames,
             PostSlidingWindowExpiredRowHandler expiredRowHandler,
+            String emptyWindowFieldNamePrefix,
             boolean skipSameWindowOutput) {
         this.windowStepSizeMs = windowStepSizeMs;
         this.rowTimeFieldName = rowTimeFieldName;
+        this.aggFieldNames = aggFieldNames;
         this.expiredRowHandler = expiredRowHandler;
+        this.emptyWindowFieldNamePrefix = emptyWindowFieldNamePrefix;
         this.skipSameWindowOutput = skipSameWindowOutput;
 
         DataTypes.Field[] keyFields = new DataTypes.Field[keyFieldNames.length];
@@ -87,8 +97,28 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
 
         this.keySerializer =
                 ExternalTypeInfo.<Row>of(DataTypes.ROW(keyFields)).createSerializer(null);
-        rowTypeInfo = ExternalTypeInfo.of(schema.toPhysicalRowDataType());
+        ExternalTypeInfo<Row> rowTypeInfo = ExternalTypeInfo.of(schema.toPhysicalRowDataType());
         this.rowTypeSerializer = rowTypeInfo.createSerializer(null);
+
+        if (emptyWindowFieldNamePrefix != null) {
+            List<String> nameList = new ArrayList<>();
+            List<TypeInformation<?>> typeList = new ArrayList<>();
+            for (Column column : schema.getColumns()) {
+                nameList.add(column.getName());
+                typeList.add(ExternalTypeInfo.of(column.getDataType()));
+            }
+            for (String aggFieldName : aggFieldNames) {
+                nameList.add(emptyWindowFieldNamePrefix + aggFieldName);
+                typeList.add(Types.BOOLEAN);
+            }
+
+            outputTypeInfo =
+                    Types.ROW_NAMED(
+                            nameList.toArray(new String[0]),
+                            typeList.toArray(new TypeInformation[0]));
+        } else {
+            outputTypeInfo = rowTypeInfo;
+        }
     }
 
     @Override
@@ -118,6 +148,7 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
         ctx.timerService().registerEventTimeTimer(currentRowExpirationTs);
 
         if (lastRowTuple == null) {
+            row = updateRowEmptyWindow(row);
             lastRowState.put(currentKey, new Tuple2<>(currentRowExpirationTs, row));
             out.collect(row);
             return;
@@ -132,6 +163,8 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
             expiredRowHandler.handleExpiredRow(out, lastRow, lastRowExpirationTs);
         }
 
+        row = updateRowEmptyWindow(row);
+
         // Do not output the current row if skipSameWindowOutput is true, last row is not expire
         // and the values do not change.
         if (skipSameWindowOutput
@@ -144,6 +177,17 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
 
         lastRowState.put(currentKey, new Tuple2<>(currentRowExpirationTs, row));
         out.collect(row);
+    }
+
+    private Row updateRowEmptyWindow(Row row) {
+        Row newRow = Row.withNames(row.getKind());
+        for (String fieldName : Objects.requireNonNull(row.getFieldNames(true))) {
+            newRow.setField(fieldName, row.getField(fieldName));
+        }
+        for (String aggFieldName : aggFieldNames) {
+            newRow.setField(emptyWindowFieldNamePrefix + aggFieldName, false);
+        }
+        return newRow;
     }
 
     @Override
@@ -161,7 +205,7 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
 
     @Override
     public TypeInformation<Row> getProducedType() {
-        return rowTypeInfo;
+        return outputTypeInfo;
     }
 
     private boolean isRowValueEquals(Row row1, Row row2) {
@@ -169,7 +213,6 @@ public class PostSlidingWindowKeyedProcessFunction extends KeyedProcessFunction<
         row2 = Row.copy(row2);
         row1.setField(rowTimeFieldName, null);
         row2.setField(rowTimeFieldName, null);
-
         return row1.equals(row2);
     }
 }

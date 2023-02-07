@@ -18,6 +18,7 @@ package com.alibaba.feathub.flink.udf;
 
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
@@ -30,9 +31,12 @@ import org.apache.flink.types.Row;
 import com.alibaba.feathub.flink.udf.processfunction.PostSlidingWindowKeyedProcessFunction;
 import com.alibaba.feathub.flink.udf.processfunction.PostSlidingWindowZeroValuedRowExpiredRowHandler;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 
+import static com.alibaba.feathub.flink.udf.SlidingWindowUtils.insertEmptyWindow;
 import static com.alibaba.feathub.flink.udf.SlidingWindowUtils.updateZeroValuedRow;
 
 /** Utility method to be used by Feathub after sliding window. */
@@ -62,6 +66,7 @@ public class PostSlidingWindowUtils {
             Row zeroValuedRow,
             boolean skipSameWindowOutput,
             String rowTimeFieldName,
+            String emptyWindowFieldNamePrefix,
             String... keyFieldNames) {
         final ResolvedSchema resolvedSchema = table.getResolvedSchema();
         DataStream<Row> rowDataStream =
@@ -70,10 +75,31 @@ public class PostSlidingWindowUtils {
                         Schema.newBuilder().fromResolvedSchema(resolvedSchema).build(),
                         ChangelogMode.all());
 
-        updateZeroValuedRow(
-                zeroValuedRow,
-                resolvedSchema.getColumnNames(),
-                resolvedSchema.getColumnDataTypes());
+        List<String> aggFieldNames = resolvedSchema.getColumnNames();
+        aggFieldNames.removeIf(
+                x -> x.equals(rowTimeFieldName) || Arrays.asList(keyFieldNames).contains(x));
+
+        insertEmptyWindow(zeroValuedRow, aggFieldNames, emptyWindowFieldNamePrefix);
+
+        List<String> resultTableFieldNames = new ArrayList<>();
+        List<DataType> resultTableFieldDataTypes = new ArrayList<>();
+        for (Column column : resolvedSchema.getColumns()) {
+            resultTableFieldNames.add(column.getName());
+            resultTableFieldDataTypes.add(column.getDataType());
+            if (emptyWindowFieldNamePrefix != null && aggFieldNames.contains(column.getName())) {
+                resultTableFieldNames.add(emptyWindowFieldNamePrefix + column.getName());
+                resultTableFieldDataTypes.add(DataTypes.BOOLEAN());
+            }
+        }
+
+        updateZeroValuedRow(zeroValuedRow, resultTableFieldNames, resultTableFieldDataTypes);
+
+        Schema resultTableSchema =
+                getResultTableSchema(
+                        resolvedSchema,
+                        rowTimeFieldName,
+                        emptyWindowFieldNamePrefix,
+                        keyFieldNames);
 
         rowDataStream =
                 rowDataStream
@@ -84,8 +110,10 @@ public class PostSlidingWindowUtils {
                                         windowStepSizeMs,
                                         keyFieldNames,
                                         rowTimeFieldName,
+                                        aggFieldNames.toArray(new String[0]),
                                         new PostSlidingWindowZeroValuedRowExpiredRowHandler(
                                                 zeroValuedRow, rowTimeFieldName, keyFieldNames),
+                                        emptyWindowFieldNamePrefix,
                                         skipSameWindowOutput))
                         .name(
                                 String.format(
@@ -93,13 +121,14 @@ public class PostSlidingWindowUtils {
                                         Arrays.toString(keyFieldNames),
                                         windowStepSizeMs,
                                         skipSameWindowOutput));
-        return tEnv.fromDataStream(
-                rowDataStream,
-                getResultTableSchema(resolvedSchema, rowTimeFieldName, keyFieldNames));
+        return tEnv.fromDataStream(rowDataStream, resultTableSchema);
     }
 
     private static Schema getResultTableSchema(
-            ResolvedSchema resolvedSchema, String rowTimeFieldName, String[] keyFieldNames) {
+            ResolvedSchema resolvedSchema,
+            String rowTimeFieldName,
+            String emptyWindowFieldNamePrefix,
+            String[] keyFieldNames) {
         final HashSet<String> keyNames = new HashSet<>(Arrays.asList(keyFieldNames));
         final Schema.Builder builder = Schema.newBuilder();
         for (Column column : resolvedSchema.getColumns()) {
@@ -110,6 +139,13 @@ public class PostSlidingWindowUtils {
                 dataType = dataType.notNull();
             }
             builder.column(colName, dataType);
+        }
+
+        for (Column column : resolvedSchema.getColumns()) {
+            String colName = column.getName();
+            if (!keyNames.contains(colName) && !rowTimeFieldName.equals(colName)) {
+                builder.column(emptyWindowFieldNamePrefix + colName, DataTypes.BOOLEAN());
+            }
         }
 
         if (keyFieldNames.length > 0) {

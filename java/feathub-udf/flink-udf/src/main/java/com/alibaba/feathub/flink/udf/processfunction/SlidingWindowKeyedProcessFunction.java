@@ -71,6 +71,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
     private final long stepSizeMs;
     private SlidingWindowState state;
     private final PostSlidingWindowExpiredRowHandler expiredRowHandler;
+    private final String emptyWindowFieldNamePrefix;
     private final boolean skipSameWindowOutput;
 
     /**
@@ -88,6 +89,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             String rowTimeFieldName,
             long stepSizeMs,
             PostSlidingWindowExpiredRowHandler expiredRowHandler,
+            String emptyWindowFieldNamePrefix,
             boolean skipSameWindowOutput) {
         this.aggregationFieldsDescriptor = aggregationFieldsDescriptor;
         this.inputRowTypeSerializer = inputRowTypeSerializer;
@@ -96,6 +98,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
         this.keyFieldNames = keyFieldNames;
         this.stepSizeMs = stepSizeMs;
         this.expiredRowHandler = expiredRowHandler;
+        this.emptyWindowFieldNamePrefix = emptyWindowFieldNamePrefix;
         this.skipSameWindowOutput = skipSameWindowOutput;
 
         // We set the grace period to be 1/10 of the maximum window time, so that the state size is
@@ -192,16 +195,23 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 descriptor.aggFunc.retract(
                         accumulatorState, curRow.getField(descriptor.inFieldName));
             }
-            if (leftIdx < timestampList.size() && timestampList.get(leftIdx) <= timestamp) {
-                // If the row time of the earliest row that is not retracted is less than or
-                // equal to the current time, we know there is at least one row in the
-                // current window.
-                hasRow = true;
-            }
+
+            // If the row time of the earliest row that is not retracted is less than or
+            // equal to the current time, we know there is at least one row in the
+            // current window.
+            boolean hasValue =
+                    leftIdx < timestampList.size() && timestampList.get(leftIdx) <= timestamp;
+
+            hasRow |= hasValue;
+
             leftIdxList.set(aggFieldIdx, leftIdx);
 
             outputRow.setField(
                     descriptor.outFieldName, descriptor.aggFunc.getResult(accumulatorState));
+
+            if (emptyWindowFieldNamePrefix != null) {
+                outputRow.setField(emptyWindowFieldNamePrefix + descriptor.outFieldName, !hasValue);
+            }
         }
         state.updateLeftTimestampIdx(leftIdxList);
         state.updateAccumulatorStates(accumulatorStates);

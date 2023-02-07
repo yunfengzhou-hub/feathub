@@ -14,3 +14,5 @@
 
 
 EVENT_TIME_ATTRIBUTE_NAME = "__event_time_attribute__"
+
+EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX = "__is_empty_window__"

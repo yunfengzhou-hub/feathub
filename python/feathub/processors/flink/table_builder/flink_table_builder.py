@@ -20,7 +20,7 @@ from pyflink.table import (
     Table as NativeFlinkTable,
     expressions as native_flink_expr,
 )
-from pyflink.table.types import DataType
+from pyflink.table.types import DataType, DataTypes
 
 from feathub.common.exceptions import FeathubException, FeathubTransformationException
 from feathub.common.types import DType
@@ -29,7 +29,10 @@ from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
-from feathub.feature_views.sliding_feature_view import SlidingFeatureView
+from feathub.feature_views.sliding_feature_view import (
+    SlidingFeatureView,
+    ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG,
+)
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.over_window_transform import (
@@ -39,7 +42,10 @@ from feathub.feature_views.transforms.python_udf_transform import PythonUdfTrans
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.constants import EVENT_TIME_ATTRIBUTE_NAME
+from feathub.processors.constants import (
+    EVENT_TIME_ATTRIBUTE_NAME,
+    EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX,
+)
 from feathub.processors.flink.flink_types_utils import to_flink_type
 from feathub.processors.flink.table_builder.aggregation_utils import (
     AggregationFieldDescriptor,
@@ -465,6 +471,9 @@ class FlinkTableBuilder:
                 field_default_value[
                     agg_descriptor.field_name
                 ] = get_default_value_and_type(agg_descriptor)
+                field_default_value[
+                    EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX + agg_descriptor.field_name
+                ] = (True, DataTypes.BOOLEAN())
             tmp_agg_table = evaluate_sliding_window_transform(
                 self.t_env,
                 tmp_table,
@@ -545,6 +554,14 @@ class FlinkTableBuilder:
                 )
 
         output_fields = self._get_output_fields(feature_view, source_fields)
+
+        if feature_view.config.get(ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG):
+            for _, agg_descriptors in sliding_window_agg_map.items():
+                for agg_descriptor in agg_descriptors:
+                    output_fields.append(
+                        EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX + agg_descriptor.field_name
+                    )
+
         return tmp_table.select(
             *[native_flink_expr.col(field) for field in output_fields]
         )

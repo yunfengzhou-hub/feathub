@@ -33,7 +33,10 @@ from feathub.feature_views.transforms.agg_func import AggFunc
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.constants import EVENT_TIME_ATTRIBUTE_NAME
+from feathub.processors.constants import (
+    EVENT_TIME_ATTRIBUTE_NAME,
+    EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX,
+)
 from feathub.processors.flink.table_builder.aggregation_utils import (
     AggregationFieldDescriptor,
     get_default_value_and_type,
@@ -237,6 +240,7 @@ def evaluate_sliding_window_transform(
         int(window_descriptor.step_size.total_seconds() * 1000),
         descriptor_builder.build(),
         default_row,
+        EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX,
         config.get(SKIP_SAME_WINDOW_OUTPUT_CONFIG),
     )
     return NativeFlinkTable(j_table, flink_table._t_env)
@@ -304,6 +308,7 @@ def _apply_post_sliding_window(
             default_row,
             skip_same_window_output,
             EVENT_TIME_ATTRIBUTE_NAME,
+            EMPTY_WINDOW_ATTRIBUTE_NAME_PREFIX,
             key_array,
         )
         table = NativeFlinkTable(j_table, table._t_env)

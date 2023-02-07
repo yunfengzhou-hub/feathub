@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.apache.flink.table.api.Expressions.$;
+import static org.apache.flink.table.api.Expressions.lit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Test for {@link SlidingWindowKeyedProcessFunction}. */
@@ -282,7 +283,8 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                 Expressions.row($("val").sum(), $("val").count()).as("val_avg"),
                                 Expressions.call(ValueCountsAggFunc.class, $("val"))
                                         .as("val_value_counts"),
-                                $("window_time"));
+                                $("window_time"),
+                                lit(false).as("__is_empty_window__"));
 
         final Row zeroValuedRow = Row.withNames();
         zeroValuedRow.setField("val_sum_2", 0);
@@ -323,6 +325,7 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         "MERGE_VALUE_COUNTS")
                                 .build(),
                         zeroValuedRow,
+                        "__is_empty_window__",
                         true);
 
         List<Row> expected =
@@ -336,7 +339,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(2L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(999)),
+                                Instant.ofEpochMilli(999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 1,
                                 5L,
@@ -347,7 +353,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(1999)),
+                                Instant.ofEpochMilli(1999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 1,
                                 3L,
@@ -357,8 +366,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(2999)),
-                        Row.of(1, 0L, null, null, Instant.ofEpochMilli(3999)),
+                                Instant.ofEpochMilli(2999),
+                                false,
+                                false,
+                                false),
+                        Row.of(1, 0L, null, null, Instant.ofEpochMilli(3999), true, true, true),
                         Row.of(
                                 0,
                                 1L,
@@ -368,8 +380,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(1L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(999)),
-                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(2999)),
+                                Instant.ofEpochMilli(999),
+                                false,
+                                false,
+                                false),
+                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(2999), true, true, true),
                         Row.of(
                                 0,
                                 3L,
@@ -379,7 +394,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(4999)),
+                                Instant.ofEpochMilli(4999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 7L,
@@ -390,7 +408,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(4L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(5999)),
+                                Instant.ofEpochMilli(5999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 9L,
@@ -401,7 +422,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(5L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(6999)),
+                                Instant.ofEpochMilli(6999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 5L,
@@ -411,8 +435,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(5L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(7999)),
-                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(8999)));
+                                Instant.ofEpochMilli(7999),
+                                false,
+                                false,
+                                false),
+                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(8999), true, true, true));
 
         List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
         assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
@@ -439,7 +466,8 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                 Expressions.row($("val").sum(), $("val").count()).as("val_avg"),
                                 Expressions.call(ValueCountsAggFunc.class, $("val"))
                                         .as("val_value_counts"),
-                                $("window_time"));
+                                $("window_time"),
+                                lit(false).as("__is_empty_window__"));
 
         final Row zeroValuedRow = Row.withNames();
         zeroValuedRow.setField("val_sum_2", 0);
@@ -480,6 +508,7 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         "MERGE_VALUE_COUNTS")
                                 .build(),
                         zeroValuedRow,
+                        "__is_empty_window__",
                         false);
 
         List<Row> expected =
@@ -493,7 +522,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(2L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(999)),
+                                Instant.ofEpochMilli(999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 1,
                                 5L,
@@ -504,7 +536,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(1999)),
+                                Instant.ofEpochMilli(1999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 1,
                                 3L,
@@ -514,8 +549,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(2999)),
-                        Row.of(1, 0L, null, null, Instant.ofEpochMilli(3999)),
+                                Instant.ofEpochMilli(2999),
+                                false,
+                                false,
+                                false),
+                        Row.of(1, 0L, null, null, Instant.ofEpochMilli(3999), true, true, true),
                         Row.of(
                                 0,
                                 1L,
@@ -525,7 +563,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(1L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(999)),
+                                Instant.ofEpochMilli(999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 1L,
@@ -535,8 +576,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(1L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(1999)),
-                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(2999)),
+                                Instant.ofEpochMilli(1999),
+                                false,
+                                false,
+                                false),
+                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(2999), true, true, true),
                         Row.of(
                                 0,
                                 3L,
@@ -546,7 +590,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(3L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(4999)),
+                                Instant.ofEpochMilli(4999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 7L,
@@ -557,7 +604,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(4L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(5999)),
+                                Instant.ofEpochMilli(5999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 9L,
@@ -568,7 +618,10 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(5L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(6999)),
+                                Instant.ofEpochMilli(6999),
+                                false,
+                                false,
+                                false),
                         Row.of(
                                 0,
                                 5L,
@@ -578,8 +631,11 @@ public class SlidingWindowKeyedProcessFunctionTest {
                                         put(5L, 1L);
                                     }
                                 },
-                                Instant.ofEpochMilli(7999)),
-                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(8999)));
+                                Instant.ofEpochMilli(7999),
+                                false,
+                                false,
+                                false),
+                        Row.of(0, 0L, null, null, Instant.ofEpochMilli(8999), true, true, true));
 
         List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
         assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);

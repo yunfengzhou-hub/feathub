@@ -77,6 +77,7 @@ public class SlidingWindowUtils {
                 stepSizeMs,
                 aggregationFieldsDescriptor,
                 null,
+                null,
                 false);
     }
 
@@ -100,6 +101,7 @@ public class SlidingWindowUtils {
      * @param zeroValuedRow If the zeroValuedRow is not null, the sliding window will output a row
      *     with default value when the window is empty. The zeroValuedRow contains zero values of
      *     the all the fields, except row time field and key fields.
+     * @param emptyWindowFieldNamePrefix xxx.
      * @param skipSameWindowOutput Whether to output if the sliding window output the same result.
      */
     public static Table applySlidingWindowKeyedProcessFunction(
@@ -110,6 +112,7 @@ public class SlidingWindowUtils {
             long stepSizeMs,
             AggregationFieldsDescriptor aggregationFieldsDescriptor,
             Row zeroValuedRow,
+            String emptyWindowFieldNamePrefix,
             boolean skipSameWindowOutput) {
         final ResolvedSchema resolvedSchema = table.getResolvedSchema();
         DataStream<Row> rowDataStream =
@@ -127,7 +130,9 @@ public class SlidingWindowUtils {
                         resolvedSchema,
                         aggregationFieldsDescriptor,
                         rowTimeFieldName,
-                        keyFieldNames);
+                        keyFieldNames,
+                        emptyWindowFieldNamePrefix,
+                        zeroValuedRow != null);
         final List<String> resultTableFieldNames =
                 resultTableFields.stream()
                         .map(DataTypes.AbstractField::getName)
@@ -141,6 +146,13 @@ public class SlidingWindowUtils {
 
         PostSlidingWindowZeroValuedRowExpiredRowHandler expiredRowHandler = null;
         if (zeroValuedRow != null) {
+            List<String> aggFieldNames =
+                    aggregationFieldsDescriptor.getAggFieldDescriptors().stream()
+                            .map(d -> d.outFieldName)
+                            .collect(Collectors.toList());
+
+            insertEmptyWindow(zeroValuedRow, aggFieldNames, emptyWindowFieldNamePrefix);
+
             expiredRowHandler =
                     new PostSlidingWindowZeroValuedRowExpiredRowHandler(
                             updateZeroValuedRow(
@@ -168,6 +180,7 @@ public class SlidingWindowUtils {
                                         rowTimeFieldName,
                                         stepSizeMs,
                                         expiredRowHandler,
+                                        emptyWindowFieldNamePrefix,
                                         skipSameWindowOutput))
                         .returns(resultRowTypeInfo);
 
@@ -178,6 +191,7 @@ public class SlidingWindowUtils {
                                 resolvedSchema,
                                 aggregationFieldsDescriptor,
                                 rowTimeFieldName,
+                                emptyWindowFieldNamePrefix,
                                 keyFieldNames));
         for (AggregationFieldsDescriptor.AggregationFieldDescriptor aggregationFieldDescriptor :
                 aggregationFieldsDescriptor.getAggFieldDescriptors()) {
@@ -188,6 +202,13 @@ public class SlidingWindowUtils {
                                     .as(aggregationFieldDescriptor.outFieldName));
         }
         return table;
+    }
+
+    public static void insertEmptyWindow(
+            Row zeroValuedRow, List<String> aggFieldNames, String emptyWindowPrefix) {
+        for (String aggFieldName : aggFieldNames) {
+            zeroValuedRow.setField(emptyWindowPrefix + aggFieldName, true);
+        }
     }
 
     public static Row updateZeroValuedRow(
@@ -240,9 +261,6 @@ public class SlidingWindowUtils {
                                         zeroValue.getClass().getName()));
                     }
                     break;
-                default:
-                    throw new RuntimeException(
-                            String.format("Unknown default value type %s", zeroValueType));
             }
         }
         return zeroValuedRow;
@@ -252,7 +270,9 @@ public class SlidingWindowUtils {
             ResolvedSchema resolvedSchema,
             AggregationFieldsDescriptor aggregationFieldsDescriptor,
             String rowTimeFieldName,
-            String[] keyFieldNames) {
+            String[] keyFieldNames,
+            String emptyWindowFieldNamePrefix,
+            boolean enableEmptyWindowOutput) {
         List<DataTypes.Field> keyFields =
                 Arrays.stream(keyFieldNames)
                         .map(
@@ -260,15 +280,23 @@ public class SlidingWindowUtils {
                                         DataTypes.FIELD(
                                                 fieldName, getDataType(resolvedSchema, fieldName)))
                         .collect(Collectors.toList());
-        List<DataTypes.Field> aggFieldDataTypes =
+        List<DataTypes.Field> aggFields =
                 aggregationFieldsDescriptor.getAggFieldDescriptors().stream()
                         .map(d -> DataTypes.FIELD(d.outFieldName, d.aggFunc.getResultDatatype()))
                         .collect(Collectors.toList());
         final List<DataTypes.Field> fields = new LinkedList<>();
         fields.addAll(keyFields);
-        fields.addAll(aggFieldDataTypes);
+        fields.addAll(aggFields);
         fields.add(
                 DataTypes.FIELD(rowTimeFieldName, getDataType(resolvedSchema, rowTimeFieldName)));
+        if (enableEmptyWindowOutput && emptyWindowFieldNamePrefix != null) {
+            for (DataTypes.Field aggField : aggFields) {
+                fields.add(
+                        DataTypes.FIELD(
+                                emptyWindowFieldNamePrefix + aggField.getName(),
+                                DataTypes.BOOLEAN()));
+            }
+        }
         return fields;
     }
 
@@ -286,6 +314,7 @@ public class SlidingWindowUtils {
             ResolvedSchema resolvedSchema,
             AggregationFieldsDescriptor descriptor,
             String rowTimeFieldName,
+            String emptyWindowFieldNamePrefix,
             String[] keyFieldNames) {
         final Schema.Builder builder = Schema.newBuilder();
 
@@ -305,6 +334,15 @@ public class SlidingWindowUtils {
         }
 
         builder.column(rowTimeFieldName, getDataType(resolvedSchema, rowTimeFieldName));
+
+        if (emptyWindowFieldNamePrefix != null) {
+            for (AggregationFieldsDescriptor.AggregationFieldDescriptor aggregationFieldDescriptor :
+                    descriptor.getAggFieldDescriptors()) {
+                builder.column(
+                        emptyWindowFieldNamePrefix + aggregationFieldDescriptor.outFieldName,
+                        DataTypes.BOOLEAN());
+            }
+        }
 
         // Records are ordered by row time after sliding window.
         builder.watermark(
