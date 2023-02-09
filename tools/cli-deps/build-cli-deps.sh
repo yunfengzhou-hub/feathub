@@ -32,6 +32,7 @@ if [[ -z "${FEATHUB_WHEEL_PATH}" ]]; then
 else
   python -m pip install --target __pypackages__ "${FEATHUB_WHEEL_PATH}" --no-deps
 fi
+# TODO: automatically infer the required python libraries from setup.py
 python -m pip install --target __pypackages__ -r requirements.txt
 cd __pypackages__ && zip -r deps.zip . && mv deps.zip ../ && cd ..
 rm -rf __pypackages__
