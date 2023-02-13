@@ -18,11 +18,11 @@ from typing import Union, Dict, Sequence, Optional
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.table.table_descriptor import TableDescriptor
 from feathub.feature_views.feature import Feature
-from feathub.feature_views.feature_view import FeatureView
+from feathub.feature_views.one_input_feature_view import OneInputFeatureView
 from feathub.registries.registry import Registry
 
 
-class DerivedFeatureView(FeatureView):
+class DerivedFeatureView(OneInputFeatureView):
     """
     Derives features by applying the given transformations on an existing table.
 

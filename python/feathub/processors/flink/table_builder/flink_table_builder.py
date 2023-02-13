@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from datetime import datetime, timedelta
-from typing import Union, Optional, List, Any, Dict, Sequence, Tuple
+from typing import Union, Optional, List, Any, Dict, Sequence, Tuple, Set
 
 import pandas as pd
 from pyflink.table import (
@@ -30,6 +30,7 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
+from feathub.feature_views.sql_feature_view import SqlFeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.over_window_transform import (
@@ -95,6 +96,7 @@ class FlinkTableBuilder:
         # NativeFlinkTable. This is used as a cache to avoid re-computing the native
         # flink table from the same TableDescriptor.
         self._built_tables: Dict[str, Tuple[TableDescriptor, NativeFlinkTable]] = {}
+        self._created_view: Set[str] = set()
 
         register_all_feathub_udf(self.t_env)
 
@@ -198,6 +200,11 @@ class FlinkTableBuilder:
             self._built_tables[features.name] = (
                 features,
                 self._get_table_from_sliding_feature_view(features),
+            )
+        elif isinstance(features, SqlFeatureView):
+            self._built_tables[features.name] = (
+                features,
+                self._get_table_from_sql_feature_view(features),
             )
         else:
             raise FeathubException(
@@ -553,6 +560,26 @@ class FlinkTableBuilder:
             *[native_flink_expr.col(field) for field in output_fields]
         )
 
+    def _get_table_from_sql_feature_view(
+        self, feature_view: SqlFeatureView
+    ) -> NativeFlinkTable:
+        def get_name(table: Union[str, TableDescriptor]) -> str:
+            if isinstance(table, str):
+                return table
+            return table.name
+
+        for source in feature_view.sources:
+            if get_name(source) in self._created_view:
+                continue
+            source_flink_table = self._get_table(source)
+            self.t_env.create_temporary_view(get_name(source), source_flink_table)
+            self._created_view.add(get_name(source))
+        self.t_env.execute_sql(feature_view.sql_statement)
+        self._created_view.add(feature_view.name)
+        result_table = self.t_env.from_path(feature_view.name)
+
+        return result_table
+
     @staticmethod
     def _apply_filter_if_any(
         table: NativeFlinkTable, filter_expr: Optional[str]
@@ -612,7 +639,9 @@ class FlinkTableBuilder:
         return table
 
     def _get_output_fields(
-        self, feature_view: FeatureView, source_fields: List[str]
+        self,
+        feature_view: Union[DerivedFeatureView, SlidingFeatureView],
+        source_fields: List[str],
     ) -> List[str]:
         output_fields = feature_view.get_output_fields(source_fields)
         if EVENT_TIME_ATTRIBUTE_NAME not in output_fields:

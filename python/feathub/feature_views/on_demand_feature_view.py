@@ -16,17 +16,17 @@ from typing import Union, Dict, Sequence, Optional
 
 from feathub.common import types
 from feathub.feature_tables.feature_table import FeatureTable
-from feathub.feature_tables.sources.redis_source import RedisSource
-from feathub.feature_views.transforms.join_transform import JoinTransform
-from feathub.feature_views.transforms.expression_transform import ExpressionTransform
-from feathub.table.table_descriptor import TableDescriptor
-from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_tables.sources.memory_store_source import MemoryStoreSource
-from feathub.registries.registry import Registry
+from feathub.feature_tables.sources.redis_source import RedisSource
+from feathub.feature_views.one_input_feature_view import OneInputFeatureView
 from feathub.feature_views.feature import Feature
+from feathub.feature_views.transforms.expression_transform import ExpressionTransform
+from feathub.feature_views.transforms.join_transform import JoinTransform
+from feathub.registries.registry import Registry
+from feathub.table.table_descriptor import TableDescriptor
 
 
-class OnDemandFeatureView(FeatureView):
+class OnDemandFeatureView(OneInputFeatureView):
     """
     Derives features by joining online request with features from tables in online
     feature stores. Unlike JoinedFeatureView, transformation of an OnDemandFeatureView

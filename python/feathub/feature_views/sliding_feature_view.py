@@ -16,8 +16,8 @@ from typing import Dict, Union, Sequence, Set, Any, Optional
 from feathub.common import types
 from feathub.common.config import BaseConfig, ConfigDef
 from feathub.common.exceptions import FeathubException, FeathubConfigurationException
+from feathub.feature_views.one_input_feature_view import OneInputFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.feature_views.transforms.sliding_window_transform import (
@@ -67,7 +67,7 @@ class SlidingFeatureViewConfig(BaseConfig):
         self.update_config_values(sliding_feature_view_config_defs)
 
 
-class SlidingFeatureView(FeatureView):
+class SlidingFeatureView(OneInputFeatureView):
     """
     Derives features by applying sliding window transformations on an existing table.
 
