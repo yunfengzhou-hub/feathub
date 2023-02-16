@@ -16,21 +16,14 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.util.Preconditions;
-
-import java.util.LinkedList;
 
 /**
  * Aggregate function that get the first value or last value.
  *
  * <p>It assumes that the values are ordered by time.
  */
-public class FirstLastValueAggFunc<T>
-        implements AggFunc<T, T, FirstLastValueAggFunc.FirstLastValueAccumulator> {
-
+public class FirstLastValueAggFunc<T> extends AbstractRawDataAggFunc<T, T> {
     private final DataType inDataType;
     private final boolean isFirstValue;
 
@@ -40,52 +33,19 @@ public class FirstLastValueAggFunc<T>
     }
 
     @Override
-    public void add(FirstLastValueAccumulator accumulator, T value, long timestamp) {
-        Preconditions.checkState(
-                timestamp > accumulator.lastTimestamp,
-                "The value to the FirstLastValueAggFuncBase must be ordered by timestamp.");
-        accumulator.lastTimestamp = timestamp;
-        accumulator.values.add(value);
-    }
-
-    @Override
-    public void retract(FirstLastValueAccumulator accumulator, T value) {
-        Preconditions.checkState(
-                accumulator.values.getFirst().equals(value),
-                "Value must be retracted by the ordered as they added to the FirstLastValueAggFuncBase.");
-        accumulator.values.removeFirst();
-    }
-
-    @Override
-    public T getResult(FirstLastValueAccumulator accumulator) {
-        if (accumulator.values.isEmpty()) {
+    public T getResult(RawDataAccumulator accumulator) {
+        if (accumulator.rawDatas.isEmpty()) {
             return null;
         }
         if (isFirstValue) {
-            return (T) accumulator.values.getFirst();
+            return (T) accumulator.rawDatas.getFirst().f0;
         } else {
-            return (T) accumulator.values.getLast();
+            return (T) accumulator.rawDatas.getLast().f0;
         }
     }
 
     @Override
     public DataType getResultDatatype() {
         return inDataType;
-    }
-
-    @Override
-    public FirstLastValueAccumulator createAccumulator() {
-        return new FirstLastValueAccumulator();
-    }
-
-    @Override
-    public TypeInformation<FirstLastValueAccumulator> getAccumulatorTypeInformation() {
-        return Types.POJO(FirstLastValueAccumulator.class);
-    }
-
-    /** Accumulator for {@link FirstLastValueAggFunc}. */
-    public static class FirstLastValueAccumulator {
-        public final LinkedList<Object> values = new LinkedList<>();
-        public long lastTimestamp = Long.MIN_VALUE;
     }
 }

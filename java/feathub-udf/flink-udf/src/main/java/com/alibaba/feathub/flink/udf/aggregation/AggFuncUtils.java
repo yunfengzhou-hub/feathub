@@ -18,20 +18,33 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.types.DataType;
 
+import javax.annotation.Nullable;
+
 /** Utility of aggregation functions. */
 public class AggFuncUtils {
-
     /**
      * Get the AggFunc implementation by the given function name and input data type.
      *
-     * @param aggFunc The name of the aggregation function.
+     * @param aggFuncName The name of the aggregation function.
      * @param inDataType The input data type of the aggregation function.
+     * @param limit The maximum number of most recent data to be aggregated.
      */
-    public static AggFunc<?, ?, ?> getAggFunc(String aggFunc, DataType inDataType) {
+    public static AggFunc<?, ?, ?> getAggFunc(
+            String aggFuncName, DataType inDataType, @Nullable Long limit) {
+        AggFunc<?, ?, ?> aggFunc = getAggFunc(aggFuncName, inDataType);
+
+        if (limit != null) {
+            aggFunc = new AggFuncWithLimit<>(aggFunc, limit);
+        }
+
+        return aggFunc;
+    }
+
+    private static AggFunc<?, ?, ?> getAggFunc(String aggFunc, DataType inDataType) {
         if ("SUM".equals(aggFunc)) {
             return getSumAggFunc(inDataType);
-        } else if ("ROW_AVG".equals(aggFunc)) {
-            return new RowAvgAggFunc(inDataType);
+        } else if ("AVG".equals(aggFunc)) {
+            return new AvgAggFunc<>(new CountAggFunc(), getSumAggFunc(inDataType));
         } else if ("FIRST_VALUE".equals(aggFunc)) {
             return new FirstLastValueAggFunc<>(inDataType, true);
         } else if ("LAST_VALUE".equals(aggFunc)) {
@@ -42,8 +55,8 @@ public class AggFuncUtils {
             return new MinMaxAggFunc<>(inDataType, true);
         } else if ("COUNT".equals(aggFunc) || "ROW_NUMBER".equals(aggFunc)) {
             return new CountAggFunc();
-        } else if ("MERGE_VALUE_COUNTS".equals(aggFunc)) {
-            return new MergeValueCountsAggFunc(inDataType);
+        } else if ("VALUE_COUNTS".equals(aggFunc)) {
+            return new ValueCountsAggFunc(inDataType);
         }
 
         throw new RuntimeException(String.format("Unsupported aggregation function %s", aggFunc));

@@ -42,7 +42,7 @@ public interface AggFunc<IN_T, OUT_T, ACC_T> extends Serializable {
      *
      * @param value The value to be retracted.
      */
-    void retract(ACC_T accumulator, IN_T value);
+    void retract(ACC_T accumulator, IN_T value, long timestamp);
 
     /** @return The aggregation result. */
     OUT_T getResult(ACC_T accumulator);
@@ -52,6 +52,22 @@ public interface AggFunc<IN_T, OUT_T, ACC_T> extends Serializable {
 
     /** @return The new accumulator of the aggregation function. */
     ACC_T createAccumulator();
+
+    /**
+     * Merges the accumulation result of the source accumulator into the target accumulator.
+     *
+     * <p>The minimum value of the timestamps of the values in one accumulator must be larger than
+     * the maximum one of the other accumulator.
+     */
+    void mergeAccumulator(ACC_T target, ACC_T source);
+
+    /**
+     * Retracts the accumulation result of the source accumulator from the target accumulator.
+     *
+     * <p>The minimum value of the timestamps of the values in one accumulator must be larger than
+     * the maximum one of the other accumulator.
+     */
+    void retractAccumulator(ACC_T target, ACC_T source);
 
     /** @return The type info of the accumulator. */
     TypeInformation<ACC_T> getAccumulatorTypeInformation();

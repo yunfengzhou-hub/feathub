@@ -20,6 +20,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.types.DataType;
 
+import java.util.Map;
 import java.util.TreeMap;
 
 /** Aggregate function that get the min or max. */
@@ -40,7 +41,7 @@ public class MinMaxAggFunc<T extends Comparable<T>>
     }
 
     @Override
-    public void retract(MinMaxAccumulator accumulator, T value) {
+    public void retract(MinMaxAccumulator accumulator, T value, long timestamp) {
         final long newCnt = accumulator.values.get(value) - 1;
         if (newCnt == 0) {
             accumulator.values.remove(value);
@@ -70,6 +71,27 @@ public class MinMaxAggFunc<T extends Comparable<T>>
     @Override
     public MinMaxAccumulator createAccumulator() {
         return new MinMaxAccumulator();
+    }
+
+    @Override
+    public void mergeAccumulator(MinMaxAccumulator target, MinMaxAccumulator source) {
+        for (Map.Entry<Comparable<?>, Long> entry : source.values.entrySet()) {
+            target.values.put(
+                    entry.getKey(),
+                    target.values.getOrDefault(entry.getKey(), 0L) + entry.getValue());
+        }
+    }
+
+    @Override
+    public void retractAccumulator(MinMaxAccumulator target, MinMaxAccumulator source) {
+        for (Map.Entry<Comparable<?>, Long> entry : source.values.entrySet()) {
+            long newCnt = target.values.get(entry.getKey()) - entry.getValue();
+            if (newCnt == 0) {
+                target.values.remove(entry.getKey());
+            } else {
+                target.values.put(entry.getKey(), newCnt);
+            }
+        }
     }
 
     @Override

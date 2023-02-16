@@ -89,7 +89,8 @@ public class AggregationFieldsDescriptor implements Serializable {
                 String outFieldNames,
                 DataType outDataType,
                 Long windowSizeMs,
-                String aggFunc) {
+                String aggFunc,
+                Long limit) {
             aggregationFieldDescriptors.add(
                     new AggregationFieldDescriptor(
                             inFieldName,
@@ -97,7 +98,8 @@ public class AggregationFieldsDescriptor implements Serializable {
                             outFieldNames,
                             outDataType,
                             windowSizeMs,
-                            aggFunc));
+                            aggFunc,
+                            limit));
             return this;
         }
 
@@ -121,13 +123,15 @@ public class AggregationFieldsDescriptor implements Serializable {
                 String outFieldNames,
                 DataType outDataType,
                 Long windowSizeMs,
-                String aggFunc) {
+                String aggFunc,
+                Long limit) {
             this.inFieldName = inFieldName;
             this.outFieldName = outFieldNames;
             this.outDataType = outDataType;
             this.windowSizeMs = windowSizeMs;
             this.aggFunc =
-                    (AggFunc<Object, ?, Object>) AggFuncUtils.getAggFunc(aggFunc, inDataType);
+                    (AggFunc<Object, ?, Object>)
+                            AggFuncUtils.getAggFunc(aggFunc, inDataType, limit);
         }
     }
 }

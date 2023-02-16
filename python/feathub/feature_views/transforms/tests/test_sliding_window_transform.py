@@ -150,6 +150,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
                         ["Alex", to_epoch_millis("2022-01-01 23:59:59.999"), 100],
                         ["Alex", to_epoch_millis("2022-01-02 23:59:59.999"), 400],
                         ["Alex", to_epoch_millis("2022-01-03 23:59:59.999"), 900],
+                        ["Alex", to_epoch_millis("2022-01-04 23:59:59.999"), 900],
                         ["Alex", to_epoch_millis("2022-01-05 23:59:59.999"), 600],
                         ["Alex", to_epoch_millis("2022-01-06 23:59:59.999"), 0],
                         ["Emma", to_epoch_millis("2022-01-01 23:59:59.999"), 400],
@@ -263,6 +264,7 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
                         [to_epoch_millis("2022-01-01 23:59:59.999"), "Alex_Alex", 100],
                         [to_epoch_millis("2022-01-02 23:59:59.999"), "Alex_Alex", 400],
                         [to_epoch_millis("2022-01-03 23:59:59.999"), "Alex_Alex", 900],
+                        [to_epoch_millis("2022-01-04 23:59:59.999"), "Alex_Alex", 900],
                         [to_epoch_millis("2022-01-05 23:59:59.999"), "Alex_Alex", 600],
                         [to_epoch_millis("2022-01-06 23:59:59.999"), "Alex_Alex", 0],
                         [to_epoch_millis("2022-01-01 23:59:59.999"), "Emma_Emma", 400],
@@ -2250,4 +2252,77 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
         self.assertTrue(
             expected_result_df.equals(result_df),
             f"expected: {expected_result_df}\n" f"actual: {result_df}",
+        )
+
+    def test_late_data(self):
+        df = pd.DataFrame(
+            [
+                ["Alex", 100, 100, "2022-01-01 08:01:00"],
+                ["Alex", 400, 250, "2022-01-01 08:02:00"],
+                ["Alex", 200, 250, "2022-01-02 08:04:00"],
+                ["Alex", 300, 200, "2022-01-01 08:03:00"],
+                ["Alex", 600, 800, "2022-01-04 08:06:00"],
+            ],
+            columns=["name", "cost", "distance", "time"],
+        )
+
+        source = self.create_file_source(df)
+
+        f_total_cost = Feature(
+            name="total_cost",
+            dtype=Int64,
+            transform=SlidingWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                window_size=timedelta(days=2),
+                step_size=timedelta(days=1),
+            ),
+        )
+
+        possible_results_df = [
+            pd.DataFrame(
+                [
+                    [to_epoch_millis("2022-01-01 23:59:59.999"), 500],
+                    [to_epoch_millis("2022-01-02 23:59:59.999"), 1000],
+                    [to_epoch_millis("2022-01-03 23:59:59.999"), 200],
+                    [to_epoch_millis("2022-01-04 23:59:59.999"), 600],
+                    [to_epoch_millis("2022-01-06 23:59:59.999"), 0],
+                ],
+                columns=["window_time", "total_cost"],
+            ),
+            pd.DataFrame(
+                [
+                    [to_epoch_millis("2022-01-01 23:59:59.999"), 500],
+                    [to_epoch_millis("2022-01-02 23:59:59.999"), 700],
+                    [to_epoch_millis("2022-01-03 23:59:59.999"), 200],
+                    [to_epoch_millis("2022-01-04 23:59:59.999"), 600],
+                    [to_epoch_millis("2022-01-06 23:59:59.999"), 0],
+                ],
+                columns=["window_time", "total_cost"],
+            ),
+        ]
+
+        props = ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT
+
+        features = SlidingFeatureView(
+            name="features",
+            source=source,
+            features=[f_total_cost],
+            props=props,
+        )
+
+        result_df = (
+            self.client.get_features(features=features)
+            .to_pandas()
+            .sort_values(by=["window_time"])
+            .reset_index(drop=True)
+        )
+
+        self.assertTrue(
+            any(
+                possible_result.equals(result_df)
+                for possible_result in possible_results_df
+            ),
+            f"Failed with props: {props}\nexpected: {possible_results_df}\n"
+            f"actual: {result_df}",
         )
