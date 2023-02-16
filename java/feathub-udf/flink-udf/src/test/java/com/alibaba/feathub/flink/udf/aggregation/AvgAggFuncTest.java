@@ -16,53 +16,52 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
-import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.types.Row;
+import org.apache.flink.api.java.tuple.Tuple2;
 
 import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Test for {@link RowAvgAggFunc}. */
-class RowAvgAggFuncTest {
-
+/** Test for {@link AvgAggFunc}. */
+class AvgAggFuncTest {
     @Test
     void testAvgAggregationFunctions() {
         innerTest(
                 Arrays.array(1, 2, 3, 4),
                 2.5,
                 3.0,
-                new RowAvgAggFunc(DataTypes.ROW(DataTypes.INT(), DataTypes.BIGINT())));
+                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.IntSumAggFunc()));
         innerTest(
                 Arrays.array(1L, 2L, 3L),
                 2.0,
                 2.5,
-                new RowAvgAggFunc(DataTypes.ROW(DataTypes.BIGINT(), DataTypes.BIGINT())));
+                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.LongSumAggFunc()));
         innerTest(
                 Arrays.array(1.0f, 2.0f, 3.0f),
                 2.0,
                 2.5,
-                new RowAvgAggFunc(DataTypes.ROW(DataTypes.FLOAT(), DataTypes.BIGINT())));
+                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.FloatSumAggFunc()));
         innerTest(
                 Arrays.array(1.0, 2.0, 3.0),
                 2.0,
                 2.5,
-                new RowAvgAggFunc(DataTypes.ROW(DataTypes.DOUBLE(), DataTypes.BIGINT())));
+                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.DoubleSumAggFunc()));
     }
 
-    private void innerTest(
-            Object[] inputs,
+    private <IN_T extends Number, ACC_T> void innerTest(
+            IN_T[] inputs,
             Double expectedResult,
             Double expectedResultAfterRetract,
-            RowAvgAggFunc aggFunc) {
-        final RowAvgAggFunc.RowAvgAccumulator accumulator = aggFunc.createAccumulator();
-        assertThat(aggFunc.getResult(accumulator)).isEqualTo(null);
-        for (Object input : inputs) {
-            aggFunc.add(accumulator, Row.of(input, 1L), 0);
+            AvgAggFunc<IN_T, ACC_T> aggFunc) {
+        final Tuple2<CountAggFunc.CountAccumulator, ACC_T> accumulator =
+                aggFunc.createAccumulator();
+        assertThat(aggFunc.getResult(accumulator)).isNaN();
+        for (IN_T input : inputs) {
+            aggFunc.add(accumulator, input, 0);
         }
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResult);
-        aggFunc.retract(accumulator, Row.of(inputs[0], 1L));
+        aggFunc.retract(accumulator, inputs[0], 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResultAfterRetract);
     }
 }

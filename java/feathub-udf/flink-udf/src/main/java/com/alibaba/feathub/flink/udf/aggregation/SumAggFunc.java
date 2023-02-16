@@ -33,7 +33,7 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
-        public void retract(IntSumAccumulator accumulator, Integer value) {
+        public void retract(IntSumAccumulator accumulator, Integer value, long timestamp) {
             accumulator.agg -= value;
         }
 
@@ -50,6 +50,16 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public IntSumAccumulator createAccumulator() {
             return new IntSumAccumulator();
+        }
+
+        @Override
+        public void mergeAccumulator(IntSumAccumulator target, IntSumAccumulator source) {
+            target.agg += source.agg;
+        }
+
+        @Override
+        public void retractAccumulator(IntSumAccumulator target, IntSumAccumulator source) {
+            target.agg -= source.agg;
         }
 
         @Override
@@ -71,7 +81,7 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
-        public void retract(LongSumAccumulator accumulator, Long value) {
+        public void retract(LongSumAccumulator accumulator, Long value, long timestamp) {
             accumulator.agg -= value;
         }
 
@@ -88,6 +98,16 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public LongSumAccumulator createAccumulator() {
             return new LongSumAccumulator();
+        }
+
+        @Override
+        public void mergeAccumulator(LongSumAccumulator target, LongSumAccumulator source) {
+            target.agg += source.agg;
+        }
+
+        @Override
+        public void retractAccumulator(LongSumAccumulator target, LongSumAccumulator source) {
+            target.agg -= source.agg;
         }
 
         @Override
@@ -110,7 +130,7 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
-        public void retract(FloatSumAccumulator accumulator, Float value) {
+        public void retract(FloatSumAccumulator accumulator, Float value, long timestamp) {
             accumulator.agg -= value;
         }
 
@@ -127,6 +147,16 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public FloatSumAccumulator createAccumulator() {
             return new FloatSumAccumulator();
+        }
+
+        @Override
+        public void mergeAccumulator(FloatSumAccumulator target, FloatSumAccumulator source) {
+            target.agg += source.agg;
+        }
+
+        @Override
+        public void retractAccumulator(FloatSumAccumulator target, FloatSumAccumulator source) {
+            target.agg -= source.agg;
         }
 
         @Override
@@ -149,7 +179,7 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
-        public void retract(DoubleSumAccumulator accumulator, Double value) {
+        public void retract(DoubleSumAccumulator accumulator, Double value, long timestamp) {
             accumulator.agg -= value;
         }
 
@@ -166,6 +196,16 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public DoubleSumAccumulator createAccumulator() {
             return new DoubleSumAccumulator();
+        }
+
+        @Override
+        public void mergeAccumulator(DoubleSumAccumulator target, DoubleSumAccumulator source) {
+            target.agg += source.agg;
+        }
+
+        @Override
+        public void retractAccumulator(DoubleSumAccumulator target, DoubleSumAccumulator source) {
+            target.agg -= source.agg;
         }
 
         @Override

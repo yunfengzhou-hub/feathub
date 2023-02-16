@@ -34,7 +34,7 @@ class MinMaxAggFuncTest {
         aggFunc.add(accumulator, 0, 0);
         aggFunc.add(accumulator, 4, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(4);
-        aggFunc.retract(accumulator, 4);
+        aggFunc.retract(accumulator, 4, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(3);
     }
 
@@ -48,7 +48,7 @@ class MinMaxAggFuncTest {
         aggFunc.add(accumulator, 0, 0);
         aggFunc.add(accumulator, 4, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(0);
-        aggFunc.retract(accumulator, 0);
+        aggFunc.retract(accumulator, 0, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(1);
     }
 }

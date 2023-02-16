@@ -45,7 +45,7 @@ class SumAggFuncTest {
             aggFunc.add(accumulator, input, 0);
         }
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResult);
-        aggFunc.retract(accumulator, inputs[0]);
+        aggFunc.retract(accumulator, inputs[0], 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResultAfterRetract);
     }
 }

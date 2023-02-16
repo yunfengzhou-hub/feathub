@@ -30,7 +30,7 @@ class CountAggFuncTest {
         aggFunc.add(accumulator, 0, 0);
         aggFunc.add(accumulator, 0, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(2);
-        aggFunc.retract(accumulator, 0);
+        aggFunc.retract(accumulator, 0, 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(1);
     }
 }

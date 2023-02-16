@@ -468,7 +468,6 @@ class FlinkTableBuilder:
                     agg_descriptor.field_name
                 ] = get_default_value_and_type(agg_descriptor)
             tmp_agg_table = evaluate_sliding_window_transform(
-                self.t_env,
                 tmp_table,
                 window_descriptor,
                 agg_descriptors,
