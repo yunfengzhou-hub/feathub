@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.valuecounts;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 
-import java.util.HashMap;
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+
 import java.util.Map;
 
 /** Aggregate function that merge value counts. */
 public class ValueCountsAggFunc
-        implements AggFunc<Object, Map<Object, Long>, ValueCountsAggFunc.ValueCountsAccumulator> {
+        implements AggFunc<Map<Object, Long>, Map<Object, Long>, ValueCountsAccumulator> {
     private final DataType inDataType;
 
     public ValueCountsAggFunc(DataType inDataType) {
@@ -34,18 +35,25 @@ public class ValueCountsAggFunc
     }
 
     @Override
-    public void add(ValueCountsAccumulator accumulator, Object value, long timestamp) {
-        accumulator.valueCounts.put(value, accumulator.valueCounts.getOrDefault(value, 0L) + 1);
+    public void add(ValueCountsAccumulator accumulator, Map<Object, Long> value, long timestamp) {
+        for (Map.Entry<Object, Long> entry : value.entrySet()) {
+            accumulator.valueCounts.put(
+                    entry.getKey(),
+                    accumulator.valueCounts.getOrDefault(entry.getKey(), 0L) + entry.getValue());
+        }
     }
 
     @Override
-    public void retract(ValueCountsAccumulator accumulator, Object value, long timestamp) {
-        long newCnt = accumulator.valueCounts.get(value) - 1;
-        if (newCnt == 0) {
-            accumulator.valueCounts.remove(value);
-            return;
+    public void retract(
+            ValueCountsAccumulator accumulator, Map<Object, Long> value, long timestamp) {
+        for (Map.Entry<Object, Long> entry : value.entrySet()) {
+            long newCnt = accumulator.valueCounts.get(entry.getKey()) - entry.getValue();
+            if (newCnt == 0) {
+                accumulator.valueCounts.remove(entry.getKey());
+            } else {
+                accumulator.valueCounts.put(entry.getKey(), newCnt);
+            }
         }
-        accumulator.valueCounts.put(value, newCnt);
     }
 
     @Override
@@ -67,33 +75,7 @@ public class ValueCountsAggFunc
     }
 
     @Override
-    public void mergeAccumulator(ValueCountsAccumulator target, ValueCountsAccumulator source) {
-        for (Map.Entry<Object, Long> entry : source.valueCounts.entrySet()) {
-            target.valueCounts.put(
-                    entry.getKey(),
-                    target.valueCounts.getOrDefault(entry.getKey(), 0L) + entry.getValue());
-        }
-    }
-
-    @Override
-    public void retractAccumulator(ValueCountsAccumulator target, ValueCountsAccumulator source) {
-        for (Map.Entry<Object, Long> entry : source.valueCounts.entrySet()) {
-            long newCnt = target.valueCounts.get(entry.getKey()) - entry.getValue();
-            if (newCnt == 0) {
-                target.valueCounts.remove(entry.getKey());
-            } else {
-                target.valueCounts.put(entry.getKey(), newCnt);
-            }
-        }
-    }
-
-    @Override
     public TypeInformation<ValueCountsAccumulator> getAccumulatorTypeInformation() {
         return Types.POJO(ValueCountsAccumulator.class);
-    }
-
-    /** Accumulator for {@link ValueCountsAccumulator}. */
-    public static class ValueCountsAccumulator {
-        public final Map<Object, Long> valueCounts = new HashMap<>();
     }
 }

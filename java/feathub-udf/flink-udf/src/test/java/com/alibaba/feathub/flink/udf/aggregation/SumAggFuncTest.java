@@ -16,6 +16,11 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import com.alibaba.feathub.flink.udf.aggregation.sum.DoubleSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.FloatSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.IntSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.LongSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.SumAggFunc;
 import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -26,11 +31,10 @@ class SumAggFuncTest {
 
     @Test
     void testSumAggregationFunctions() {
-        innerTest(Arrays.array(1, 2, 3), 6, 0, 5, new SumAggFunc.IntSumAggFunc());
-        innerTest(Arrays.array(1L, 2L, 3L), 6L, 0L, 5L, new SumAggFunc.LongSumAggFunc());
-        innerTest(
-                Arrays.array(1.0f, 2.0f, 3.0f), 6.0f, 0.0f, 5.0f, new SumAggFunc.FloatSumAggFunc());
-        innerTest(Arrays.array(1.0, 2.0, 3.0), 6.0, 0.0, 5.0, new SumAggFunc.DoubleSumAggFunc());
+        innerTest(Arrays.array(1, 2, 3), 6, 0, 5, new IntSumAggFunc());
+        innerTest(Arrays.array(1L, 2L, 3L), 6L, 0L, 5L, new LongSumAggFunc());
+        innerTest(Arrays.array(1.0f, 2.0f, 3.0f), 6.0f, 0.0f, 5.0f, new FloatSumAggFunc());
+        innerTest(Arrays.array(1.0, 2.0, 3.0), 6.0, 0.0, 5.0, new DoubleSumAggFunc());
     }
 
     private <T, ACC_T> void innerTest(

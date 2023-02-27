@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.avg;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -22,33 +22,42 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.LongSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.SumAggFunc;
+
 /** Aggregation function that computes the average value of input data. */
 public class AvgAggFunc<IN_T extends Number, ACC_T>
-        implements AggFunc<IN_T, Double, Tuple2<CountAggFunc.CountAccumulator, ACC_T>> {
-    private final CountAggFunc countAggFunc;
+        implements AggFunc<
+                Tuple2<Long, IN_T>, Double, Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T>> {
+    private final LongSumAggFunc countAggFunc;
     private final SumAggFunc<IN_T, ACC_T> sumAggFunc;
 
-    public AvgAggFunc(CountAggFunc countAggFunc, SumAggFunc<IN_T, ACC_T> sumAggFunc) {
-        this.countAggFunc = countAggFunc;
+    public AvgAggFunc(SumAggFunc<IN_T, ACC_T> sumAggFunc) {
+        this.countAggFunc = new LongSumAggFunc();
         this.sumAggFunc = sumAggFunc;
     }
 
     @Override
     public void add(
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> accumulator, IN_T value, long timestamp) {
-        countAggFunc.add(accumulator.f0, value, timestamp);
-        sumAggFunc.add(accumulator.f1, value, timestamp);
+            Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T> accumulator,
+            Tuple2<Long, IN_T> value,
+            long timestamp) {
+        countAggFunc.add(accumulator.f0, value.f0, timestamp);
+        sumAggFunc.add(accumulator.f1, value.f1, timestamp);
     }
 
     @Override
     public void retract(
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> accumulator, IN_T value, long timestamp) {
-        countAggFunc.retract(accumulator.f0, value, timestamp);
-        sumAggFunc.retract(accumulator.f1, value, timestamp);
+            Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T> accumulator,
+            Tuple2<Long, IN_T> value,
+            long timestamp) {
+        countAggFunc.retract(accumulator.f0, value.f0, timestamp);
+        sumAggFunc.retract(accumulator.f1, value.f1, timestamp);
     }
 
     @Override
-    public Double getResult(Tuple2<CountAggFunc.CountAccumulator, ACC_T> accumulator) {
+    public Double getResult(Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T> accumulator) {
         return sumAggFunc.getResult(accumulator.f1).doubleValue()
                 / countAggFunc.getResult(accumulator.f0);
     }
@@ -59,28 +68,12 @@ public class AvgAggFunc<IN_T extends Number, ACC_T>
     }
 
     @Override
-    public Tuple2<CountAggFunc.CountAccumulator, ACC_T> createAccumulator() {
+    public Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T> createAccumulator() {
         return Tuple2.of(countAggFunc.createAccumulator(), sumAggFunc.createAccumulator());
     }
 
     @Override
-    public void mergeAccumulator(
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> target,
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> source) {
-        countAggFunc.mergeAccumulator(target.f0, source.f0);
-        sumAggFunc.mergeAccumulator(target.f1, source.f1);
-    }
-
-    @Override
-    public void retractAccumulator(
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> target,
-            Tuple2<CountAggFunc.CountAccumulator, ACC_T> source) {
-        countAggFunc.retractAccumulator(target.f0, source.f0);
-        sumAggFunc.retractAccumulator(target.f1, source.f1);
-    }
-
-    @Override
-    public TypeInformation<Tuple2<CountAggFunc.CountAccumulator, ACC_T>>
+    public TypeInformation<Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T>>
             getAccumulatorTypeInformation() {
         return Types.TUPLE(
                 countAggFunc.getAccumulatorTypeInformation(),

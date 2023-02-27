@@ -16,12 +16,58 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import com.alibaba.feathub.flink.udf.aggregation.count.CountPreAggFunc;
 import org.apache.flink.table.types.DataType;
+
+import com.alibaba.feathub.flink.udf.aggregation.avg.AvgAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.avg.AvgPreAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.count.CountAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValueAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValuePreAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.minmax.MinMaxAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.DoubleSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.FloatSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.IntSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.LongSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.SumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsPreAggFunc;
 
 import javax.annotation.Nullable;
 
 /** Utility of aggregation functions. */
 public class AggFuncUtils {
+    public static PreAggFunc<?, ?, ?> getPreAggFunc(
+            String aggFuncName, DataType inDataType, @Nullable Long limit) {
+        if (limit != null) {
+            return new AggFuncWithLimit.PreAggFuncWithLimit<>();
+        } else {
+            return getPreAggFunc(aggFuncName, inDataType);
+        }
+    }
+
+    private static PreAggFunc<?, ?, ?> getPreAggFunc(String aggFunc, DataType inDataType) {
+        if ("SUM".equals(aggFunc)) {
+            return getSumAggFunc(inDataType);
+        } else if ("AVG".equals(aggFunc)) {
+            return new AvgPreAggFunc<>(getSumAggFunc(inDataType));
+        } else if ("FIRST_VALUE".equals(aggFunc)) {
+            return new FirstLastValuePreAggFunc<>(inDataType, true);
+        } else if ("LAST_VALUE".equals(aggFunc)) {
+            return new FirstLastValuePreAggFunc<>(inDataType, false);
+        } else if ("MAX".equals(aggFunc)) {
+            return new MinMaxAggFunc<>(inDataType, false);
+        } else if ("MIN".equals(aggFunc)) {
+            return new MinMaxAggFunc<>(inDataType, true);
+        } else if ("COUNT".equals(aggFunc) || "ROW_NUMBER".equals(aggFunc)) {
+            return new CountPreAggFunc();
+        } else if ("VALUE_COUNTS".equals(aggFunc)) {
+            return new ValueCountsPreAggFunc(inDataType);
+        }
+
+        throw new RuntimeException(String.format("Unsupported aggregation function %s", aggFunc));
+    }
+
     /**
      * Get the AggFunc implementation by the given function name and input data type.
      *
@@ -44,7 +90,7 @@ public class AggFuncUtils {
         if ("SUM".equals(aggFunc)) {
             return getSumAggFunc(inDataType);
         } else if ("AVG".equals(aggFunc)) {
-            return new AvgAggFunc<>(new CountAggFunc(), getSumAggFunc(inDataType));
+            return new AvgAggFunc<>(getSumAggFunc(inDataType));
         } else if ("FIRST_VALUE".equals(aggFunc)) {
             return new FirstLastValueAggFunc<>(inDataType, true);
         } else if ("LAST_VALUE".equals(aggFunc)) {
@@ -66,13 +112,13 @@ public class AggFuncUtils {
     private static <IN_T> SumAggFunc<IN_T, ?> getSumAggFunc(DataType inDataType) {
         final Class<?> inClass = inDataType.getConversionClass();
         if (inClass.equals(Integer.class)) {
-            return (SumAggFunc<IN_T, ?>) new SumAggFunc.IntSumAggFunc();
+            return (SumAggFunc<IN_T, ?>) new IntSumAggFunc();
         } else if (inClass.equals(Long.class)) {
-            return (SumAggFunc<IN_T, ?>) new SumAggFunc.LongSumAggFunc();
+            return (SumAggFunc<IN_T, ?>) new LongSumAggFunc();
         } else if (inClass.equals(Float.class)) {
-            return (SumAggFunc<IN_T, ?>) new SumAggFunc.FloatSumAggFunc();
+            return (SumAggFunc<IN_T, ?>) new FloatSumAggFunc();
         } else if (inClass.equals(Double.class)) {
-            return (SumAggFunc<IN_T, ?>) new SumAggFunc.DoubleSumAggFunc();
+            return (SumAggFunc<IN_T, ?>) new DoubleSumAggFunc();
         }
         throw new RuntimeException(
                 String.format("Unsupported type for AvgAggregationFunction %s.", inDataType));

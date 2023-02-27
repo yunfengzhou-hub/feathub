@@ -18,6 +18,11 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 
+import com.alibaba.feathub.flink.udf.aggregation.avg.AvgAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.DoubleSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.FloatSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.IntSumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.LongSumAggFunc;
 import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -27,26 +32,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AvgAggFuncTest {
     @Test
     void testAvgAggregationFunctions() {
+        innerTest(Arrays.array(1, 2, 3, 4), 2.5, 3.0, new AvgAggFunc<>(new IntSumAggFunc()));
+        innerTest(Arrays.array(1L, 2L, 3L), 2.0, 2.5, new AvgAggFunc<>(new LongSumAggFunc()));
         innerTest(
-                Arrays.array(1, 2, 3, 4),
-                2.5,
-                3.0,
-                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.IntSumAggFunc()));
-        innerTest(
-                Arrays.array(1L, 2L, 3L),
-                2.0,
-                2.5,
-                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.LongSumAggFunc()));
-        innerTest(
-                Arrays.array(1.0f, 2.0f, 3.0f),
-                2.0,
-                2.5,
-                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.FloatSumAggFunc()));
-        innerTest(
-                Arrays.array(1.0, 2.0, 3.0),
-                2.0,
-                2.5,
-                new AvgAggFunc<>(new CountAggFunc(), new SumAggFunc.DoubleSumAggFunc()));
+                Arrays.array(1.0f, 2.0f, 3.0f), 2.0, 2.5, new AvgAggFunc<>(new FloatSumAggFunc()));
+        innerTest(Arrays.array(1.0, 2.0, 3.0), 2.0, 2.5, new AvgAggFunc<>(new DoubleSumAggFunc()));
     }
 
     private <IN_T extends Number, ACC_T> void innerTest(
@@ -54,14 +44,14 @@ class AvgAggFuncTest {
             Double expectedResult,
             Double expectedResultAfterRetract,
             AvgAggFunc<IN_T, ACC_T> aggFunc) {
-        final Tuple2<CountAggFunc.CountAccumulator, ACC_T> accumulator =
+        final Tuple2<LongSumAggFunc.LongSumAccumulator, ACC_T> accumulator =
                 aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNaN();
         for (IN_T input : inputs) {
-            aggFunc.add(accumulator, input, 0);
+            aggFunc.add(accumulator, Tuple2.of(1L, input), 0);
         }
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResult);
-        aggFunc.retract(accumulator, inputs[0], 0);
+        aggFunc.retract(accumulator, Tuple2.of(1L, inputs[0]), 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(expectedResultAfterRetract);
     }
 }

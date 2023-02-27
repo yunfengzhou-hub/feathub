@@ -14,29 +14,31 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.count;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+
 /** Aggregation function that counts the number of values. */
-public class CountAggFunc implements AggFunc<Object, Long, CountAggFunc.CountAccumulator> {
+public class CountAggFunc implements AggFunc<Long, Long, CountAccumulator> {
 
     @Override
-    public void add(CountAccumulator accumulator, Object value, long timestamp) {
-        accumulator.cnt += 1;
+    public void add(CountAccumulator acc, Long value, long timestamp) {
+        acc.cnt += value;
     }
 
     @Override
-    public void retract(CountAccumulator accumulator, Object value, long timestamp) {
-        accumulator.cnt -= 1;
+    public void retract(CountAccumulator acc, Long value, long timestamp) {
+        acc.cnt -= value;
     }
 
     @Override
-    public Long getResult(CountAccumulator accumulator) {
-        return accumulator.cnt;
+    public Long getResult(CountAccumulator acc) {
+        return acc.cnt;
     }
 
     @Override
@@ -50,22 +52,7 @@ public class CountAggFunc implements AggFunc<Object, Long, CountAggFunc.CountAcc
     }
 
     @Override
-    public void mergeAccumulator(CountAccumulator target, CountAccumulator source) {
-        target.cnt += source.cnt;
-    }
-
-    @Override
-    public void retractAccumulator(CountAccumulator target, CountAccumulator source) {
-        target.cnt -= source.cnt;
-    }
-
-    @Override
-    public TypeInformation<CountAccumulator> getAccumulatorTypeInformation() {
+    public TypeInformation getAccumulatorTypeInformation() {
         return Types.POJO(CountAccumulator.class);
-    }
-
-    /** Accumulator of {@link CountAggFunc}. */
-    public static class CountAccumulator {
-        public Long cnt = 0L;
     }
 }

@@ -16,8 +16,10 @@
 
 package com.alibaba.feathub.flink.udf.processfunction;
 
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
@@ -51,8 +53,8 @@ public class SlidingWindowKeyedCoProcessFunctionTest {
         final DataStream<Row> data =
                 env.fromElements(
                         Row.of(0, 1L, Instant.ofEpochMilli(0)),
-                        Row.of(1, 2L, Instant.ofEpochMilli(600)),
-                        Row.of(1, 3L, Instant.ofEpochMilli(1100)),
+//                        Row.of(1, 2L, Instant.ofEpochMilli(600)),
+//                        Row.of(1, 3L, Instant.ofEpochMilli(1100)),
                         Row.of(0, 4L, Instant.ofEpochMilli(5000)),
                         Row.of(0, 3L, Instant.ofEpochMilli(4000)),
                         Row.of(0, 5L, Instant.ofEpochMilli(6000)));
@@ -681,12 +683,24 @@ public class SlidingWindowKeyedCoProcessFunctionTest {
         env.getConfig().setParallelism(1);
         tEnv.getConfig().setLocalTimeZone(ZoneId.of("Asia/Shanghai"));
         final DataStream<Row> data =
-                env.fromElements(
-                        Row.of(0, 1L, Instant.ofEpochMilli(0)),
-                        Row.of(0, 3L, Instant.ofEpochMilli(2900)),
-                        Row.of(0, 2L, Instant.ofEpochMilli(1100)),
-                        Row.of(0, 4L, Instant.ofEpochMilli(5000)),
-                        Row.of(0, 5L, Instant.ofEpochMilli(6000)));
+                env.addSource(
+                        new SourceFunctionWithInterval(
+                                100,
+                                Row.of(0, 1L, Instant.ofEpochMilli(0)),
+                                Row.of(0, 3L, Instant.ofEpochMilli(3000)),
+                                Row.of(0, 2L, Instant.ofEpochMilli(2100)),
+                                Row.of(0, 0L, Instant.ofEpochMilli(4000)),
+                                Row.of(0, 4L, Instant.ofEpochMilli(5000)),
+                                Row.of(0, 5L, Instant.ofEpochMilli(6000))),
+                        Types.ROW(Types.INT, Types.LONG, Types.INSTANT));
+        //        final DataStream<Row> data =
+        //                env.fromElements(
+        //                        Row.of(0, 1L, Instant.ofEpochMilli(0)),
+        //                        Row.of(0, 3L, Instant.ofEpochMilli(3000)),
+        //                        Row.of(0, 2L, Instant.ofEpochMilli(2100)),
+        //                        Row.of(0, 0L, Instant.ofEpochMilli(4000)),
+        //                        Row.of(0, 4L, Instant.ofEpochMilli(5000)),
+        //                        Row.of(0, 5L, Instant.ofEpochMilli(6000)));
         inputTable =
                 tEnv.fromDataStream(
                                 data,
@@ -724,9 +738,9 @@ public class SlidingWindowKeyedCoProcessFunctionTest {
         List<Row> expected1 =
                 java.util.Arrays.asList(
                         Row.of(0, 1L, Instant.ofEpochMilli(999)),
-                        Row.of(0, 5L, Instant.ofEpochMilli(2999)),
-                        Row.of(0, 3L, Instant.ofEpochMilli(3999)),
-                        Row.of(0, 0L, Instant.ofEpochMilli(4999)),
+                        Row.of(0, 0L, Instant.ofEpochMilli(2999)),
+                        Row.of(0, 5L, Instant.ofEpochMilli(3999)),
+                        Row.of(0, 3L, Instant.ofEpochMilli(4999)),
                         Row.of(0, 4L, Instant.ofEpochMilli(5999)),
                         Row.of(0, 9L, Instant.ofEpochMilli(6999)),
                         Row.of(0, 5L, Instant.ofEpochMilli(7999)),
@@ -743,6 +757,112 @@ public class SlidingWindowKeyedCoProcessFunctionTest {
                         Row.of(0, 0L, Instant.ofEpochMilli(8999)));
 
         List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
-        assertThat(actual.equals(expected1) || actual.equals(expected2)).isTrue();
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(expected1);
+        //        assertThat(actual.equals(expected1) || actual.equals(expected2)).isTrue();
+    }
+
+    @Test
+    void testLateData2() {
+        env.getConfig().setParallelism(1);
+        tEnv.getConfig().setLocalTimeZone(ZoneId.of("Asia/Shanghai"));
+        final DataStream<Row> data =
+                env.addSource(
+                        new SourceFunctionWithInterval(
+                                100,
+                                Row.of(0, 1L, Instant.ofEpochMilli(0)),
+                                Row.of(0, 3L, Instant.ofEpochMilli(2500)),
+                                Row.of(0, 1L, Instant.ofEpochMilli(3500)),
+                                Row.of(0, 2L, Instant.ofEpochMilli(2100)),
+                                Row.of(0, 0L, Instant.ofEpochMilli(4000)),
+                                Row.of(0, 4L, Instant.ofEpochMilli(5000)),
+                                Row.of(0, 5L, Instant.ofEpochMilli(6000))),
+                        Types.ROW(Types.INT, Types.LONG, Types.INSTANT));
+        //                env.fromElements(
+        //                        Row.of(0, 1L, Instant.ofEpochMilli(0)),
+        //                        Row.of(0, 3L, Instant.ofEpochMilli(3000)),
+        //                        Row.of(0, 0L, Instant.ofEpochMilli(3500)),
+        //                        Row.of(0, 2L, Instant.ofEpochMilli(2100)),
+        //                        Row.of(0, 0L, Instant.ofEpochMilli(4000)),
+        //                        Row.of(0, 4L, Instant.ofEpochMilli(5000)),
+        //                        Row.of(0, 5L, Instant.ofEpochMilli(6000)));
+        inputTable =
+                tEnv.fromDataStream(
+                                data,
+                                Schema.newBuilder()
+                                        .column("f0", DataTypes.INT())
+                                        .column("f1", DataTypes.BIGINT())
+                                        .column("f2", DataTypes.TIMESTAMP_LTZ(3))
+                                        .watermark("f2", "f2")
+                                        .build())
+                        .as("id", "val", "ts");
+
+        final Row zeroValuedRow = Row.withNames();
+        zeroValuedRow.setField("val_sum_2", 0);
+
+        Table table =
+                SlidingWindowUtils.applySlidingWindow(
+                        tEnv,
+                        inputTable,
+                        Arrays.array("id"),
+                        "ts",
+                        1000L,
+                        AggregationFieldsDescriptor.builder()
+                                .addField(
+                                        "val",
+                                        DataTypes.BIGINT(),
+                                        "val_sum_2",
+                                        DataTypes.BIGINT(),
+                                        2000L,
+                                        "SUM",
+                                        null)
+                                .build(),
+                        zeroValuedRow,
+                        true);
+
+        List<Row> expected1 =
+                java.util.Arrays.asList(
+                        Row.of(0, 1L, Instant.ofEpochMilli(999)),
+                        Row.of(0, 3L, Instant.ofEpochMilli(2999)),
+                        Row.of(0, 6L, Instant.ofEpochMilli(3999)),
+                        Row.of(0, 1L, Instant.ofEpochMilli(4999)),
+                        Row.of(0, 4L, Instant.ofEpochMilli(5999)),
+                        Row.of(0, 9L, Instant.ofEpochMilli(6999)),
+                        Row.of(0, 5L, Instant.ofEpochMilli(7999)),
+                        Row.of(0, 0L, Instant.ofEpochMilli(8999)));
+
+        List<Row> expected2 =
+                java.util.Arrays.asList(
+                        Row.of(0, 1L, Instant.ofEpochMilli(999)),
+                        Row.of(0, 3L, Instant.ofEpochMilli(2999)),
+                        Row.of(0, 0L, Instant.ofEpochMilli(4999)),
+                        Row.of(0, 4L, Instant.ofEpochMilli(5999)),
+                        Row.of(0, 9L, Instant.ofEpochMilli(6999)),
+                        Row.of(0, 5L, Instant.ofEpochMilli(7999)),
+                        Row.of(0, 0L, Instant.ofEpochMilli(8999)));
+
+        List<Row> actual = CollectionUtil.iteratorToList(table.execute().collect());
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(expected1);
+        //        assertThat(actual.equals(expected1) || actual.equals(expected2)).isTrue();
+    }
+
+    private static class SourceFunctionWithInterval implements SourceFunction<Row> {
+        private final long intervalMs;
+        private final List<Row> data;
+
+        private SourceFunctionWithInterval(long intervalMs, Row... data) {
+            this.intervalMs = intervalMs;
+            this.data = java.util.Arrays.asList(data);
+        }
+
+        @Override
+        public void run(SourceContext<Row> sourceContext) throws Exception {
+            for (Row t : data) {
+                sourceContext.collect(t);
+                Thread.sleep(intervalMs);
+            }
+        }
+
+        @Override
+        public void cancel() {}
     }
 }

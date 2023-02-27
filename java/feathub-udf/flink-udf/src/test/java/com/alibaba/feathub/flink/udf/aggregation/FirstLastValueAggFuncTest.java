@@ -17,7 +17,9 @@
 package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.types.Row;
 
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValueAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,14 +30,15 @@ class FirstLastValueAggFuncTest {
     void tesFirstValue() {
         final FirstLastValueAggFunc<Integer> aggFunc =
                 new FirstLastValueAggFunc<>(DataTypes.INT(), true);
-        final AbstractRawDataAggFunc.RawDataAccumulator accumulator = aggFunc.createAccumulator();
+        final AbstractRawDataAggFunc.RawDataAccumulator<Integer> accumulator =
+                aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
-        aggFunc.add(accumulator, 0, 0);
-        aggFunc.add(accumulator, 1, 1);
-        aggFunc.add(accumulator, 2, 2);
-        aggFunc.add(accumulator, 3, 3);
+        aggFunc.add(accumulator, Row.of(0, 0), 0);
+        aggFunc.add(accumulator, Row.of(1, 0), 1);
+        aggFunc.add(accumulator, Row.of(2, 0), 2);
+        aggFunc.add(accumulator, Row.of(3, 0), 3);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(0);
-        aggFunc.retract(accumulator, 0, 0);
+        aggFunc.retract(accumulator, Row.of(0, 0), 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(1);
     }
 
@@ -43,14 +46,15 @@ class FirstLastValueAggFuncTest {
     void testLastValue() {
         final FirstLastValueAggFunc<Integer> aggFunc =
                 new FirstLastValueAggFunc<>(DataTypes.INT(), false);
-        final AbstractRawDataAggFunc.RawDataAccumulator accumulator = aggFunc.createAccumulator();
+        final AbstractRawDataAggFunc.RawDataAccumulator<Integer> accumulator =
+                aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
-        aggFunc.add(accumulator, 0, 0);
-        aggFunc.add(accumulator, 1, 1);
-        aggFunc.add(accumulator, 2, 2);
-        aggFunc.add(accumulator, 3, 3);
+        aggFunc.add(accumulator, Row.of(0, 0), 0);
+        aggFunc.add(accumulator, Row.of(1, 0), 1);
+        aggFunc.add(accumulator, Row.of(2, 0), 2);
+        aggFunc.add(accumulator, Row.of(3, 0), 3);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(3);
-        aggFunc.retract(accumulator, 0, 0);
+        aggFunc.retract(accumulator, Row.of(0, 0), 0);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(3);
     }
 }

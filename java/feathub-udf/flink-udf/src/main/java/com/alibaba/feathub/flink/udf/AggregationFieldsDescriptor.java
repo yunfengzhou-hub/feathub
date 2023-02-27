@@ -20,6 +20,7 @@ import org.apache.flink.table.types.DataType;
 
 import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
 import com.alibaba.feathub.flink.udf.aggregation.AggFuncUtils;
+import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -115,6 +116,7 @@ public class AggregationFieldsDescriptor implements Serializable {
         public DataType outDataType;
         public Long windowSizeMs;
         public AggFunc<Object, ?, Object> aggFunc;
+        public PreAggFunc<Object, ?, Object> preAggFunc;
 
         @SuppressWarnings({"unchecked"})
         public AggregationFieldDescriptor(
@@ -132,6 +134,9 @@ public class AggregationFieldsDescriptor implements Serializable {
             this.aggFunc =
                     (AggFunc<Object, ?, Object>)
                             AggFuncUtils.getAggFunc(aggFunc, inDataType, limit);
+            this.preAggFunc =
+                    (PreAggFunc<Object, ?, Object>)
+                            AggFuncUtils.getPreAggFunc(aggFunc, inDataType, limit);
         }
     }
 }

@@ -16,7 +16,11 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 
 /**
@@ -31,17 +35,45 @@ public class AggFuncWithLimit<IN_T, OUT_T, ACC_T> extends AbstractRawDataAggFunc
         this.limit = limit;
     }
 
+    //    @Override
+    //    public void addPreAggResult(RawDataAccumulator target, RawDataAccumulator source) {
+    //        if (source.rawDatas.isEmpty()) {
+    //            return;
+    //        }
+    //
+    //        if (target.rawDatas.isEmpty()) {
+    //            target.rawDatas.addAll(source.rawDatas);
+    //            return;
+    //        }
+    //
+    //        if (target.rawDatas.getLast().f1 > source.rawDatas.getLast().f1) {
+    //            LinkedList<Tuple2<Object, Long>> tmpList = target.rawDatas;
+    //            target.rawDatas = new LinkedList<>();
+    //            target.rawDatas.addAll(source.rawDatas);
+    //            target.rawDatas.addAll(tmpList);
+    //        } else {
+    //            target.rawDatas.addAll(source.rawDatas);
+    //        }
+    //    }
+    //
+    //    @Override
+    //    public void retractPreAggResult(RawDataAccumulator target, RawDataAccumulator source) {
+    //        for (Tuple2<Object, Long> value : source.rawDatas) {
+    //            this.retract(target, (IN_T) value.f0, value.f1);
+    //        }
+    //    }
+
     @Override
-    public OUT_T getResult(RawDataAccumulator accumulator) {
+    public OUT_T getResult(RawDataAccumulator<IN_T> accumulator) {
         long numIgnoredData = accumulator.rawDatas.size() - limit;
         long count = 0;
         ACC_T internalAccumulator = aggFunc.createAccumulator();
-        for (Tuple2<Object, Long> data : accumulator.rawDatas) {
+        for (Tuple2<IN_T, Long> data : accumulator.rawDatas) {
             count++;
             if (count <= numIgnoredData) {
                 continue;
             }
-            aggFunc.add(internalAccumulator, (IN_T) data.f0, data.f1);
+            aggFunc.add(internalAccumulator, data.f0, data.f1);
         }
 
         return aggFunc.getResult(internalAccumulator);
@@ -50,5 +82,52 @@ public class AggFuncWithLimit<IN_T, OUT_T, ACC_T> extends AbstractRawDataAggFunc
     @Override
     public DataType getResultDatatype() {
         return aggFunc.getResultDatatype();
+    }
+
+    public static class PreAggFuncWithLimit<T>
+            implements PreAggFunc<T, RawDataAccumulator<T>, RawDataAccumulator<T>> {
+        @Override
+        public void add(RawDataAccumulator<T> accumulator, T value, long timestamp) {
+            if (accumulator.rawDatas.isEmpty() || timestamp >= accumulator.rawDatas.getLast().f1) {
+                accumulator.rawDatas.add(Tuple2.of(value, timestamp));
+                return;
+            }
+
+            int index = -1;
+            for (Tuple2<T, Long> tuple2 : accumulator.rawDatas) {
+                index++;
+                if (tuple2.f1 > timestamp) {
+                    accumulator.rawDatas.add(index, Tuple2.of(value, timestamp));
+                    return;
+                }
+            }
+
+            throw new RuntimeException(
+                    String.format(
+                            "Cannot add value with timestamp %s to RawDataAccumulator.",
+                            timestamp));
+        }
+
+        @Override
+        public RawDataAccumulator<T> getResult(RawDataAccumulator<T> accumulator) {
+            return accumulator;
+        }
+
+        @Override
+        public DataType getResultDatatype() {
+            return DataTypes.RAW(
+                    RawDataAccumulator.class,
+                    Types.POJO(RawDataAccumulator.class).createSerializer(new ExecutionConfig()));
+        }
+
+        @Override
+        public RawDataAccumulator<T> createAccumulator() {
+            return new RawDataAccumulator<>();
+        }
+
+        @Override
+        public TypeInformation getAccumulatorTypeInformation() {
+            return Types.POJO(RawDataAccumulator.class);
+        }
     }
 }

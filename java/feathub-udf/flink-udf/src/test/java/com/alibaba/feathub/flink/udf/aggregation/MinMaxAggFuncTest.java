@@ -18,6 +18,8 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.api.DataTypes;
 
+import com.alibaba.feathub.flink.udf.aggregation.minmax.MinMaxAccumulator;
+import com.alibaba.feathub.flink.udf.aggregation.minmax.MinMaxAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +29,7 @@ class MinMaxAggFuncTest {
     @Test
     void testMax() {
         final MinMaxAggFunc<Integer> aggFunc = new MinMaxAggFunc<>(DataTypes.INT(), false);
-        final MinMaxAggFunc.MinMaxAccumulator accumulator = aggFunc.createAccumulator();
+        final MinMaxAccumulator accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 1, 0);
         aggFunc.add(accumulator, 3, 0);
@@ -41,7 +43,7 @@ class MinMaxAggFuncTest {
     @Test
     void testMin() {
         final MinMaxAggFunc<Integer> aggFunc = new MinMaxAggFunc<>(DataTypes.INT(), true);
-        final MinMaxAggFunc.MinMaxAccumulator accumulator = aggFunc.createAccumulator();
+        final MinMaxAccumulator accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 1, 0);
         aggFunc.add(accumulator, 3, 0);

@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.minmax;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.types.DataType;
 
-import java.util.Map;
-import java.util.TreeMap;
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
 
 /** Aggregate function that get the min or max. */
 public class MinMaxAggFunc<T extends Comparable<T>>
-        implements AggFunc<T, T, MinMaxAggFunc.MinMaxAccumulator> {
+        implements AggFunc<T, T, MinMaxAccumulator>, PreAggFunc<T, T, MinMaxAccumulator> {
 
     private final DataType inDataType;
     private final boolean isMin;
@@ -74,33 +74,7 @@ public class MinMaxAggFunc<T extends Comparable<T>>
     }
 
     @Override
-    public void mergeAccumulator(MinMaxAccumulator target, MinMaxAccumulator source) {
-        for (Map.Entry<Comparable<?>, Long> entry : source.values.entrySet()) {
-            target.values.put(
-                    entry.getKey(),
-                    target.values.getOrDefault(entry.getKey(), 0L) + entry.getValue());
-        }
-    }
-
-    @Override
-    public void retractAccumulator(MinMaxAccumulator target, MinMaxAccumulator source) {
-        for (Map.Entry<Comparable<?>, Long> entry : source.values.entrySet()) {
-            long newCnt = target.values.get(entry.getKey()) - entry.getValue();
-            if (newCnt == 0) {
-                target.values.remove(entry.getKey());
-            } else {
-                target.values.put(entry.getKey(), newCnt);
-            }
-        }
-    }
-
-    @Override
     public TypeInformation<MinMaxAccumulator> getAccumulatorTypeInformation() {
         return Types.POJO(MinMaxAccumulator.class);
-    }
-
-    /** Accumulator for {@link MinMaxAggFunc}. */
-    public static class MinMaxAccumulator {
-        public final TreeMap<Comparable<?>, Long> values = new TreeMap<>();
     }
 }
