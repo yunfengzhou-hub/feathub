@@ -16,21 +16,33 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import com.alibaba.feathub.flink.udf.aggregation.count.CountAccumulator;
+import com.alibaba.feathub.flink.udf.aggregation.count.CountAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.count.CountPreAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Test for {@link CountAggFunc}. */
+/** Test for {@link CountAggFunc} and {@link CountPreAggFunc}. */
 class CountAggFuncTest {
+    @Test
+    void testCountPreAggregationFunction() {
+        CountPreAggFunc preAggFunc = new CountPreAggFunc();
+        CountAccumulator accumulator = preAggFunc.createAccumulator();
+        preAggFunc.add(accumulator, "1L", 0);
+        preAggFunc.add(accumulator, "2L", 0);
+        assertThat(preAggFunc.getResult(accumulator)).isEqualTo(2);
+    }
+
     @Test
     void testCountAggregationFunction() {
         final CountAggFunc aggFunc = new CountAggFunc();
-        final CountAggFunc.CountAccumulator accumulator = aggFunc.createAccumulator();
+        final CountAccumulator accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(0);
-        aggFunc.add(accumulator, 0, 0);
-        aggFunc.add(accumulator, 0, 0);
+        aggFunc.add(accumulator, 1L, 0);
+        aggFunc.add(accumulator, 2L, 0);
+        assertThat(aggFunc.getResult(accumulator)).isEqualTo(3);
+        aggFunc.retract(accumulator, 1L);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(2);
-        aggFunc.retract(accumulator, 0);
-        assertThat(aggFunc.getResult(accumulator)).isEqualTo(1);
     }
 }

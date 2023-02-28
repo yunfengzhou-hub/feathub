@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.avg;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -23,29 +23,19 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.types.Row;
 
-import java.util.List;
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
 
 /** Aggregation function that calculates the average of rows with sum and count. */
-public class RowAvgAggFunc implements AggFunc<Row, Double, RowAvgAggFunc.RowAvgAccumulator> {
+public class AvgAggFunc implements AggFunc<Row, Double, AvgAggFunc.AvgAccumulator> {
 
     private final DataType valueType;
 
-    public RowAvgAggFunc(DataType valueType) {
-        final List<DataType> childrenType = valueType.getChildren();
-        if (childrenType.size() != 2
-                || (!childrenType
-                        .get(1)
-                        .getLogicalType()
-                        .getTypeRoot()
-                        .equals(LogicalTypeRoot.BIGINT))) {
-            throw new RuntimeException(
-                    "RowAvgAggregationFunction expect Row with two fields and the second fields has to be BIGINT.");
-        }
-        this.valueType = childrenType.get(0);
+    public AvgAggFunc(DataType valueType) {
+        this.valueType = valueType;
     }
 
     @Override
-    public void add(RowAvgAccumulator accumulator, Row value, long timestamp) {
+    public void add(AvgAccumulator accumulator, Row value, long timestamp) {
         if (accumulator.avgRow == null) {
             accumulator.avgRow = value;
             return;
@@ -55,7 +45,7 @@ public class RowAvgAggFunc implements AggFunc<Row, Double, RowAvgAggFunc.RowAvgA
     }
 
     @Override
-    public void retract(RowAvgAccumulator accumulator, Row value) {
+    public void retract(AvgAccumulator accumulator, Row value) {
         Object sum1 = accumulator.avgRow.getField(0);
         Object sum2 = value.getField(0);
         Long cnt1 = accumulator.avgRow.getFieldAs(1);
@@ -84,7 +74,7 @@ public class RowAvgAggFunc implements AggFunc<Row, Double, RowAvgAggFunc.RowAvgA
         }
     }
 
-    private void mergeRow(RowAvgAccumulator accumulator, Row value) {
+    private void mergeRow(AvgAccumulator accumulator, Row value) {
         Object sum1 = accumulator.avgRow.getField(0);
         Object sum2 = value.getField(0);
         Long cnt1 = accumulator.avgRow.getFieldAs(1);
@@ -109,7 +99,7 @@ public class RowAvgAggFunc implements AggFunc<Row, Double, RowAvgAggFunc.RowAvgA
     }
 
     @Override
-    public Double getResult(RowAvgAccumulator accumulator) {
+    public Double getResult(AvgAccumulator accumulator) {
         if (accumulator.avgRow == null) {
             return null;
         }
@@ -140,17 +130,17 @@ public class RowAvgAggFunc implements AggFunc<Row, Double, RowAvgAggFunc.RowAvgA
     }
 
     @Override
-    public RowAvgAccumulator createAccumulator() {
-        return new RowAvgAccumulator();
+    public AvgAccumulator createAccumulator() {
+        return new AvgAccumulator();
     }
 
     @Override
-    public TypeInformation<RowAvgAccumulator> getAccumulatorTypeInformation() {
-        return Types.POJO(RowAvgAccumulator.class);
+    public TypeInformation<AvgAccumulator> getAccumulatorTypeInformation() {
+        return Types.POJO(AvgAccumulator.class);
     }
 
-    /** Accumulator for {@link RowAvgAccumulator}. */
-    public static class RowAvgAccumulator {
+    /** Accumulator for {@link AvgAggFunc}. */
+    public static class AvgAccumulator {
         public Row avgRow = null;
     }
 }

@@ -20,6 +20,7 @@ import org.apache.flink.table.types.DataType;
 
 import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
 import com.alibaba.feathub.flink.udf.aggregation.AggFuncUtils;
+import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -89,7 +90,8 @@ public class AggregationFieldsDescriptor implements Serializable {
                 String outFieldNames,
                 DataType outDataType,
                 Long windowSizeMs,
-                String aggFunc) {
+                String aggFunc,
+                Long limit) {
             aggregationFieldDescriptors.add(
                     new AggregationFieldDescriptor(
                             inFieldName,
@@ -97,7 +99,8 @@ public class AggregationFieldsDescriptor implements Serializable {
                             outFieldNames,
                             outDataType,
                             windowSizeMs,
-                            aggFunc));
+                            aggFunc,
+                            limit));
             return this;
         }
 
@@ -113,6 +116,7 @@ public class AggregationFieldsDescriptor implements Serializable {
         public DataType outDataType;
         public Long windowSizeMs;
         public AggFunc<Object, ?, Object> aggFunc;
+        public PreAggFunc<Object, ?, Object> preAggFunc;
 
         @SuppressWarnings({"unchecked"})
         public AggregationFieldDescriptor(
@@ -121,13 +125,18 @@ public class AggregationFieldsDescriptor implements Serializable {
                 String outFieldNames,
                 DataType outDataType,
                 Long windowSizeMs,
-                String aggFunc) {
+                String aggFunc,
+                Long limit) {
             this.inFieldName = inFieldName;
             this.outFieldName = outFieldNames;
             this.outDataType = outDataType;
             this.windowSizeMs = windowSizeMs;
             this.aggFunc =
-                    (AggFunc<Object, ?, Object>) AggFuncUtils.getAggFunc(aggFunc, inDataType);
+                    (AggFunc<Object, ?, Object>)
+                            AggFuncUtils.getAggFunc(aggFunc, inDataType, limit);
+            this.preAggFunc =
+                    (PreAggFunc<Object, ?, Object>)
+                            AggFuncUtils.getPreAggFunc(aggFunc, inDataType, limit);
         }
     }
 }

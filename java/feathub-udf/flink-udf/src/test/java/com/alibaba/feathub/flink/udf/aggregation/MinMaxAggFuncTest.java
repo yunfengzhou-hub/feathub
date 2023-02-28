@@ -18,6 +18,7 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.api.DataTypes;
 
+import com.alibaba.feathub.flink.udf.aggregation.minmax.MinMaxAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
