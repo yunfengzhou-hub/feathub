@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.sum;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
+
 /** Aggregation functions that calculates the sum of values. */
-public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC_T> {
+public abstract class SumAggFunc<IN_T, ACC_T>
+        implements AggFunc<IN_T, IN_T, ACC_T>, PreAggFunc<IN_T, IN_T, ACC_T> {
 
     /** Aggregation functions that calculates the sum of Integer values. */
     public static class IntSumAggFunc extends SumAggFunc<Integer, IntSumAggFunc.IntSumAccumulator> {
@@ -30,6 +34,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public void add(IntSumAccumulator accumulator, Integer value, long timestamp) {
             accumulator.agg += value;
+        }
+
+        @Override
+        public void merge(IntSumAccumulator target, IntSumAccumulator sources) {
+            target.agg += sources.agg;
         }
 
         @Override
@@ -45,6 +54,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public DataType getResultDatatype() {
             return DataTypes.INT();
+        }
+
+        @Override
+        public TypeInformation<Integer> getResultTypeInformation() {
+            return Types.INT;
         }
 
         @Override
@@ -71,6 +85,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
+        public void merge(LongSumAccumulator target, LongSumAccumulator sources) {
+            target.agg += sources.agg;
+        }
+
+        @Override
         public void retract(LongSumAccumulator accumulator, Long value) {
             accumulator.agg -= value;
         }
@@ -83,6 +102,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public DataType getResultDatatype() {
             return DataTypes.BIGINT();
+        }
+
+        @Override
+        public TypeInformation<Long> getResultTypeInformation() {
+            return Types.LONG;
         }
 
         @Override
@@ -110,6 +134,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
+        public void merge(FloatSumAccumulator target, FloatSumAccumulator sources) {
+            target.agg += sources.agg;
+        }
+
+        @Override
         public void retract(FloatSumAccumulator accumulator, Float value) {
             accumulator.agg -= value;
         }
@@ -122,6 +151,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public DataType getResultDatatype() {
             return DataTypes.FLOAT();
+        }
+
+        @Override
+        public TypeInformation<Float> getResultTypeInformation() {
+            return Types.FLOAT;
         }
 
         @Override
@@ -149,6 +183,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         }
 
         @Override
+        public void merge(DoubleSumAccumulator target, DoubleSumAccumulator sources) {
+            target.agg += sources.agg;
+        }
+
+        @Override
         public void retract(DoubleSumAccumulator accumulator, Double value) {
             accumulator.agg -= value;
         }
@@ -161,6 +200,11 @@ public abstract class SumAggFunc<IN_T, ACC_T> implements AggFunc<IN_T, IN_T, ACC
         @Override
         public DataType getResultDatatype() {
             return DataTypes.DOUBLE();
+        }
+
+        @Override
+        public TypeInformation<Double> getResultTypeInformation() {
+            return Types.DOUBLE;
         }
 
         @Override

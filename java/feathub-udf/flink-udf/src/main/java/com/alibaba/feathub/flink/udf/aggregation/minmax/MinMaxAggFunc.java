@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.minmax;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.table.runtime.typeutils.ExternalTypeInfo;
 import org.apache.flink.table.types.DataType;
 
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
+
+import java.util.Map;
 import java.util.TreeMap;
 
 /** Aggregate function that get the min or max. */
 public class MinMaxAggFunc<T extends Comparable<T>>
-        implements AggFunc<T, T, MinMaxAggFunc.MinMaxAccumulator> {
+        implements AggFunc<T, T, MinMaxAggFunc.MinMaxAccumulator>,
+                PreAggFunc<T, T, MinMaxAggFunc.MinMaxAccumulator> {
 
     private final DataType inDataType;
     private final boolean isMin;
@@ -37,6 +43,15 @@ public class MinMaxAggFunc<T extends Comparable<T>>
     @Override
     public void add(MinMaxAccumulator accumulator, T value, long timestamp) {
         accumulator.values.put(value, accumulator.values.getOrDefault(value, 0L) + 1);
+    }
+
+    @Override
+    public void merge(MinMaxAccumulator target, MinMaxAccumulator source) {
+        for (Map.Entry<Comparable<?>, Long> entry : source.values.entrySet()) {
+            target.values.put(
+                    entry.getKey(),
+                    target.values.getOrDefault(entry.getKey(), 0L) + entry.getValue());
+        }
     }
 
     @Override
@@ -65,6 +80,11 @@ public class MinMaxAggFunc<T extends Comparable<T>>
     @Override
     public DataType getResultDatatype() {
         return inDataType;
+    }
+
+    @Override
+    public TypeInformation getResultTypeInformation() {
+        return ExternalTypeInfo.of(inDataType);
     }
 
     @Override

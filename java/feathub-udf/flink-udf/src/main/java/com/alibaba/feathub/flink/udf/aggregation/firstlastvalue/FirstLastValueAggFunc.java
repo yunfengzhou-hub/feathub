@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package com.alibaba.feathub.flink.udf.aggregation;
+package com.alibaba.feathub.flink.udf.aggregation.firstlastvalue;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
+
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
 
 import java.util.LinkedList;
 
@@ -43,7 +45,7 @@ public class FirstLastValueAggFunc<T>
     public void add(FirstLastValueAccumulator accumulator, T value, long timestamp) {
         Preconditions.checkState(
                 timestamp > accumulator.lastTimestamp,
-                "The value to the FirstLastValueAggFuncBase must be ordered by timestamp.");
+                "The value to the FirstLastValueAggFunc must be ordered by timestamp.");
         accumulator.lastTimestamp = timestamp;
         accumulator.values.add(value);
     }

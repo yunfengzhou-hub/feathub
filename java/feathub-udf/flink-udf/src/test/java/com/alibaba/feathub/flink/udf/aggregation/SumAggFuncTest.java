@@ -16,6 +16,7 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import com.alibaba.feathub.flink.udf.aggregation.sum.SumAggFunc;
 import org.assertj.core.util.Arrays;
 import org.junit.jupiter.api.Test;
 
