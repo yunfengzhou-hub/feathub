@@ -108,11 +108,13 @@ public class AggregationFieldsDescriptor implements Serializable {
 
     /** The descriptor of an aggregation field. */
     public static class AggregationFieldDescriptor implements Serializable {
-        public String inFieldName;
-        public String outFieldName;
-        public DataType outDataType;
-        public Long windowSizeMs;
-        public AggFunc<Object, ?, Object> aggFunc;
+        public final String inFieldName;
+        public final String outFieldName;
+        public final DataType inDataType;
+        public final DataType outDataType;
+        public final Long windowSizeMs;
+        public final String aggFuncName;
+        public final AggFunc<Object, ?, Object> aggFunc;
 
         @SuppressWarnings({"unchecked"})
         public AggregationFieldDescriptor(
@@ -121,13 +123,16 @@ public class AggregationFieldsDescriptor implements Serializable {
                 String outFieldNames,
                 DataType outDataType,
                 Long windowSizeMs,
-                String aggFunc) {
+                String aggFuncName) {
             this.inFieldName = inFieldName;
             this.outFieldName = outFieldNames;
+            this.inDataType = inDataType;
             this.outDataType = outDataType;
             this.windowSizeMs = windowSizeMs;
+            this.aggFuncName = aggFuncName;
+
             this.aggFunc =
-                    (AggFunc<Object, ?, Object>) AggFuncUtils.getAggFunc(aggFunc, inDataType);
+                    (AggFunc<Object, ?, Object>) AggFuncUtils.getAggFunc(aggFuncName, inDataType);
         }
     }
 }

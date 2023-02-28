@@ -491,3 +491,31 @@ class FlinkProcessorITTest(
 
     def test_random_field_length(self):
         pass
+
+    # TODO: Add back this test case when SlidingWindowKeyedProcessFunction can handle
+    #  unordered data, meaning that the aggregations with limits can be directly
+    #  processed by this function without pre-aggregation process.
+    #  Related PR: https://github.com/alibaba/feathub/pull/80
+    def test_sliding_window_with_millisecond_sliding_window_timestamp(self):
+        pass
+
+    # TODO: Add back this test case when SlidingWindowKeyedProcessFunction can handle
+    #  unordered data, meaning that the aggregations with limits can be directly
+    #  processed by this function without pre-aggregation process.
+    #  Related PR: https://github.com/alibaba/feathub/pull/80
+    def test_transform_with_expression_as_group_by_key(self):
+        pass
+
+    # TODO: Add back this test case when SlidingWindowKeyedProcessFunction can handle
+    #  unordered data, meaning that the aggregations with limits can be directly
+    #  processed by this function without pre-aggregation process.
+    #  Related PR: https://github.com/alibaba/feathub/pull/80
+    def test_transform_with_limit(self):
+        pass
+
+    # TODO: Add back this test case when SlidingWindowKeyedProcessFunction can handle
+    #  unordered data, meaning that the aggregations with limits can be directly
+    #  processed by this function without pre-aggregation process.
+    #  Related PR: https://github.com/alibaba/feathub/pull/80
+    def test_transform_with_value_counts(self):
+        pass

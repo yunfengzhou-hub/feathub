@@ -34,14 +34,18 @@ import org.apache.flink.util.Collector;
 import org.apache.flink.util.Preconditions;
 
 import com.alibaba.feathub.flink.udf.AggregationFieldsDescriptor;
+import com.alibaba.feathub.flink.udf.aggregation.AggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.AggFuncUtils;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A KeyedProcessFunction that aggregate sliding windows with different sizes. The ProcessFunction
@@ -61,6 +65,7 @@ import java.util.List;
  * the tumbling window aggregation to the input with window size that is same as the step size of
  * the {@link SlidingWindowKeyedProcessFunction} to be applied.
  */
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row, Row, Row> {
 
     private final AggregationFieldsDescriptor aggregationFieldsDescriptor;
@@ -70,8 +75,9 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
     private final String[] keyFieldNames;
     private final long stepSizeMs;
     private SlidingWindowState state;
-    private final PostSlidingWindowExpiredRowHandler expiredRowHandler;
+    private final SlidingWindowExpiredRowHandler expiredRowHandler;
     private final boolean skipSameWindowOutput;
+    private final Map<String, AggFunc> aggFuncMap;
 
     /**
      * The grace period specifies the maximum duration a row can stay in the state after it is
@@ -87,7 +93,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             String[] keyFieldNames,
             String rowTimeFieldName,
             long stepSizeMs,
-            PostSlidingWindowExpiredRowHandler expiredRowHandler,
+            SlidingWindowExpiredRowHandler expiredRowHandler,
             boolean skipSameWindowOutput) {
         this.aggregationFieldsDescriptor = aggregationFieldsDescriptor;
         this.inputRowTypeSerializer = inputRowTypeSerializer;
@@ -97,6 +103,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
         this.stepSizeMs = stepSizeMs;
         this.expiredRowHandler = expiredRowHandler;
         this.skipSameWindowOutput = skipSameWindowOutput;
+        this.aggFuncMap = getAggFuncMap(aggregationFieldsDescriptor);
 
         // We set the grace period to be 1/10 of the maximum window time, so that the state size is
         // at most 1/10 larger. And we only need to call prune row once every 1/10 of the maximum
@@ -111,6 +118,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 SlidingWindowState.create(
                         getRuntimeContext(),
                         aggregationFieldsDescriptor,
+                        aggFuncMap,
                         inputRowTypeSerializer,
                         outputRowTypeSerializer);
     }
@@ -176,8 +184,13 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             final int aggFieldIdx = aggregationFieldsDescriptor.getAggFieldIdx(descriptor);
             Object accumulatorState = accumulatorStates.getField(aggFieldIdx);
             if (rowToAdd != null) {
-                descriptor.aggFunc.add(
-                        accumulatorState, rowToAdd.getField(descriptor.inFieldName), timestamp);
+                accumulatorState =
+                        aggFuncMap
+                                .get(descriptor.outFieldName)
+                                .add(
+                                        accumulatorState,
+                                        rowToAdd.getField(descriptor.outFieldName),
+                                        timestamp);
             }
 
             // Advance left idx and retract rows whose rowTime is out of the time window
@@ -189,8 +202,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                     break;
                 }
                 Row curRow = state.timestampToRow.get(rowTime);
-                descriptor.aggFunc.retract(
-                        accumulatorState, curRow.getField(descriptor.inFieldName));
+                accumulatorState =
+                        aggFuncMap
+                                .get(descriptor.outFieldName)
+                                .retract(
+                                        accumulatorState, curRow.getField(descriptor.outFieldName));
             }
             if (leftIdx < timestampList.size() && timestampList.get(leftIdx) <= timestamp) {
                 // If the row time of the earliest row that is not retracted is less than or
@@ -201,7 +217,8 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             leftIdxList.set(aggFieldIdx, leftIdx);
 
             outputRow.setField(
-                    descriptor.outFieldName, descriptor.aggFunc.getResult(accumulatorState));
+                    descriptor.outFieldName,
+                    aggFuncMap.get(descriptor.outFieldName).getResult(accumulatorState));
         }
         state.updateLeftTimestampIdx(leftIdxList);
         state.updateAccumulatorStates(accumulatorStates);
@@ -230,6 +247,18 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                         - pruneRowGracePeriod) {
             state.pruneRow(timestamp, aggregationFieldsDescriptor);
         }
+    }
+
+    private static Map<String, AggFunc> getAggFuncMap(AggregationFieldsDescriptor aggDescriptors) {
+        Map<String, AggFunc> map = new HashMap<>();
+        for (AggregationFieldsDescriptor.AggregationFieldDescriptor descriptor :
+                aggDescriptors.getAggFieldDescriptors()) {
+            map.put(
+                    descriptor.outFieldName,
+                    AggFuncUtils.getSlidingWindowAggFunc(
+                            descriptor.aggFuncName, descriptor.inDataType));
+        }
+        return map;
     }
 
     /** The state of {@link SlidingWindowKeyedProcessFunction}. */
@@ -273,6 +302,8 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
          */
         private final ValueState<Row> accumulatorStates;
 
+        private final Map<String, AggFunc> aggFuncMap;
+
         private SlidingWindowState(
                 AggregationFieldsDescriptor aggregationFieldsDescriptor,
                 MapState<Long, Row> timestampToRow,
@@ -280,7 +311,8 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 ValueState<List<Integer>> leftTimestampIdxList,
                 ValueState<Long> maxRegisteredTimer,
                 ValueState<Row> lastOutputRow,
-                ValueState<Row> accumulatorStates) {
+                ValueState<Row> accumulatorStates,
+                Map<String, AggFunc> aggFuncMap) {
             this.aggregationFieldsDescriptor = aggregationFieldsDescriptor;
             this.timestampToRow = timestampToRow;
             this.timestampList = timestampList;
@@ -288,12 +320,14 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             this.maxRegisteredTimer = maxRegisteredTimer;
             this.lastOutputRow = lastOutputRow;
             this.accumulatorStates = accumulatorStates;
+            this.aggFuncMap = aggFuncMap;
         }
 
         @SuppressWarnings({"rawtypes"})
         public static SlidingWindowState create(
                 RuntimeContext context,
                 AggregationFieldsDescriptor aggregationFieldsDescriptor,
+                Map<String, AggFunc> aggFuncMap,
                 TypeSerializer<Row> inputRowTypeSerializer,
                 TypeSerializer<Row> outputRowTypeSerializer) {
             final MapState<Long, Row> timestampToRow =
@@ -324,7 +358,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
 
             final TypeInformation[] accumulatorTypeInformation =
                     aggregationFieldsDescriptor.getAggFieldDescriptors().stream()
-                            .map(descriptor -> descriptor.aggFunc.getAccumulatorTypeInformation())
+                            .map(
+                                    descriptor ->
+                                            aggFuncMap
+                                                    .get(descriptor.outFieldName)
+                                                    .getAccumulatorTypeInformation())
                             .toArray(TypeInformation[]::new);
             ValueState<Row> accumulatorStates =
                     context.getState(
@@ -338,7 +376,8 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                     outFieldNameToLeftTimestampIdx,
                     maxRegisteredTimer,
                     lastOutputRow,
-                    accumulatorStates);
+                    accumulatorStates,
+                    aggFuncMap);
         }
 
         /**
@@ -430,7 +469,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             if (acc == null) {
                 final Object[] accumulators =
                         aggregationFieldsDescriptor.getAggFieldDescriptors().stream()
-                                .map(descriptor -> descriptor.aggFunc.createAccumulator())
+                                .map(
+                                        descriptor ->
+                                                aggFuncMap
+                                                        .get(descriptor.outFieldName)
+                                                        .createAccumulator())
                                 .toArray();
                 acc = Row.of(accumulators);
             }

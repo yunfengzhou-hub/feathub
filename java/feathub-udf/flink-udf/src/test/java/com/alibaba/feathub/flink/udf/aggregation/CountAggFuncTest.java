@@ -16,6 +16,7 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import com.alibaba.feathub.flink.udf.aggregation.count.CountAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,12 +26,14 @@ class CountAggFuncTest {
     @Test
     void testCountAggregationFunction() {
         final CountAggFunc aggFunc = new CountAggFunc();
-        final CountAggFunc.CountAccumulator accumulator = aggFunc.createAccumulator();
+        CountAggFunc.CountAccumulator accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(0);
-        aggFunc.add(accumulator, 0, 0);
-        aggFunc.add(accumulator, 0, 0);
+        accumulator = aggFunc.add(accumulator, 1L, 0);
+        CountAggFunc.CountAccumulator accumulator2 = new CountAggFunc.CountAccumulator();
+        accumulator2.cnt = 2L;
+        accumulator = aggFunc.merge(accumulator, accumulator2);
+        assertThat(aggFunc.getResult(accumulator)).isEqualTo(3);
+        accumulator = aggFunc.retract(accumulator, 1L);
         assertThat(aggFunc.getResult(accumulator)).isEqualTo(2);
-        aggFunc.retract(accumulator, 0);
-        assertThat(aggFunc.getResult(accumulator)).isEqualTo(1);
     }
 }

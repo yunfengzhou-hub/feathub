@@ -18,17 +18,18 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.api.DataTypes;
 
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValueAggFunc;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Test for {@link FirstValueAggFunc}. */
+/** Test for {@link FirstLastValueAggFunc}. */
 class FirstLastValueAggFuncTest {
     @Test
     void tesFirstValue() {
         final FirstLastValueAggFunc<Integer> aggFunc =
                 new FirstLastValueAggFunc<>(DataTypes.INT(), true);
-        final FirstLastValueAggFunc.FirstLastValueAccumulator accumulator =
+        final FirstLastValueAggFunc.RawDataAccumulator<Integer> accumulator =
                 aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 0, 0);
@@ -44,7 +45,7 @@ class FirstLastValueAggFuncTest {
     void testLastValue() {
         final FirstLastValueAggFunc<Integer> aggFunc =
                 new FirstLastValueAggFunc<>(DataTypes.INT(), false);
-        final FirstLastValueAggFunc.FirstLastValueAccumulator accumulator =
+        final FirstLastValueAggFunc.RawDataAccumulator<Integer> accumulator =
                 aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 0, 0);
