@@ -70,7 +70,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
     private final String[] keyFieldNames;
     private final long stepSizeMs;
     private SlidingWindowState state;
-    private final PostSlidingWindowExpiredRowHandler expiredRowHandler;
+    private final SlidingWindowExpiredRowHandler expiredRowHandler;
     private final boolean skipSameWindowOutput;
 
     /**
@@ -87,7 +87,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             String[] keyFieldNames,
             String rowTimeFieldName,
             long stepSizeMs,
-            PostSlidingWindowExpiredRowHandler expiredRowHandler,
+            SlidingWindowExpiredRowHandler expiredRowHandler,
             boolean skipSameWindowOutput) {
         this.aggregationFieldsDescriptor = aggregationFieldsDescriptor;
         this.inputRowTypeSerializer = inputRowTypeSerializer;

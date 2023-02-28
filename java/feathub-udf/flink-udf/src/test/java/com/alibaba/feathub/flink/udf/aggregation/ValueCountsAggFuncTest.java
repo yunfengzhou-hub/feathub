@@ -18,6 +18,8 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.api.DataTypes;
 
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsPreAggFunc;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -26,14 +28,25 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Test for {@link MergeValueCountsAggFunc}. */
-class MergeValueCountsAggFuncTest {
+/** Test for {@link ValueCountsAggFunc} and {@link ValueCountsPreAggFunc}. */
+class ValueCountsAggFuncTest {
     @Test
-    void testMergeValueCountsAggregationFunction() {
-        final MergeValueCountsAggFunc aggFunc =
-                new MergeValueCountsAggFunc(DataTypes.MAP(DataTypes.STRING(), DataTypes.BIGINT()));
-        final MergeValueCountsAggFunc.MergeValueCountsAccumulator accumulator =
-                aggFunc.createAccumulator();
+    void testValueCountsPreAggregationFunction() {
+        final ValueCountsPreAggFunc preAggFunc = new ValueCountsPreAggFunc(DataTypes.STRING());
+        Map<Object, Long> accumulator = preAggFunc.createAccumulator();
+        preAggFunc.add(accumulator, "a", 0);
+        preAggFunc.add(accumulator, "a", 0);
+        preAggFunc.add(accumulator, "b", 0);
+        Map<Object, Long> expectedResult = new HashMap<>();
+        expectedResult.put("a", 2L);
+        expectedResult.put("b", 1L);
+        assertThat(preAggFunc.getResult(accumulator)).isEqualTo(expectedResult);
+    }
+
+    @Test
+    void testValueCountsAggregationFunction() {
+        final ValueCountsAggFunc aggFunc = new ValueCountsAggFunc(DataTypes.STRING());
+        final ValueCountsAggFunc.ValueCountsAccumulator accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, Collections.singletonMap("a", 1L), 0);
         aggFunc.add(accumulator, Collections.singletonMap("a", 1L), 0);

@@ -18,20 +18,74 @@ package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.table.types.DataType;
 
+import com.alibaba.feathub.flink.udf.aggregation.avg.AvgAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.avg.AvgPreAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.count.CountAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.count.CountPreAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValueAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.firstlastvalue.FirstLastValuePreAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.minmax.MinMaxAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.sum.SumAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsAggFunc;
+import com.alibaba.feathub.flink.udf.aggregation.valuecounts.ValueCountsPreAggFunc;
+
 /** Utility of aggregation functions. */
 public class AggFuncUtils {
-
     /**
-     * Get the AggFunc implementation by the given function name and input data type.
+     * Get the PreAggFunc implementation by the given function name and input data type.
      *
      * @param aggFunc The name of the aggregation function.
      * @param inDataType The input data type of the aggregation function.
      */
-    public static AggFunc<?, ?, ?> getAggFunc(String aggFunc, DataType inDataType) {
+    public static PreAggFunc<?, ?, ?> getPreAggFunc(
+            String aggFunc, DataType inDataType, Long limit) {
+        if (limit != null) {
+            return new PreAggFuncWithLimit<>(inDataType);
+        }
+
         if ("SUM".equals(aggFunc)) {
             return getSumAggFunc(inDataType);
-        } else if ("ROW_AVG".equals(aggFunc)) {
-            return new RowAvgAggFunc(inDataType);
+        } else if ("AVG".equals(aggFunc)) {
+            return new AvgPreAggFunc<>(getSumAggFunc(inDataType));
+        } else if ("FIRST_VALUE".equals(aggFunc)) {
+            return new FirstLastValuePreAggFunc<>(inDataType, true);
+        } else if ("LAST_VALUE".equals(aggFunc)) {
+            return new FirstLastValuePreAggFunc<>(inDataType, false);
+        } else if ("MAX".equals(aggFunc)) {
+            return new MinMaxAggFunc<>(inDataType, false);
+        } else if ("MIN".equals(aggFunc)) {
+            return new MinMaxAggFunc<>(inDataType, true);
+        } else if ("COUNT".equals(aggFunc) || "ROW_NUMBER".equals(aggFunc)) {
+            return new CountPreAggFunc();
+        } else if ("VALUE_COUNTS".equals(aggFunc)) {
+            return new ValueCountsPreAggFunc(inDataType);
+        }
+
+        throw new RuntimeException(String.format("Unsupported aggregation function %s", aggFunc));
+    }
+
+    /**
+     * Get the AggFunc implementation by the given function name and input data type.
+     *
+     * @param aggFuncName The name of the aggregation function.
+     * @param inDataType The input data type of the aggregation function.
+     */
+    public static AggFunc<?, ?, ?> getAggFunc(String aggFuncName, DataType inDataType, Long limit) {
+        AggFunc<?, ?, ?> aggFunc = getAggFunc(aggFuncName, inDataType);
+
+        if (limit != null) {
+            PreAggFunc<?, ?, ?> preAggFunc = getPreAggFunc(aggFuncName, inDataType, null);
+            return new AggFuncWithLimit(preAggFunc, aggFunc, limit);
+        }
+
+        return aggFunc;
+    }
+
+    private static AggFunc<?, ?, ?> getAggFunc(String aggFunc, DataType inDataType) {
+        if ("SUM".equals(aggFunc)) {
+            return getSumAggFunc(inDataType);
+        } else if ("AVG".equals(aggFunc)) {
+            return new AvgAggFunc(inDataType);
         } else if ("FIRST_VALUE".equals(aggFunc)) {
             return new FirstLastValueAggFunc<>(inDataType, true);
         } else if ("LAST_VALUE".equals(aggFunc)) {
@@ -42,8 +96,8 @@ public class AggFuncUtils {
             return new MinMaxAggFunc<>(inDataType, true);
         } else if ("COUNT".equals(aggFunc) || "ROW_NUMBER".equals(aggFunc)) {
             return new CountAggFunc();
-        } else if ("MERGE_VALUE_COUNTS".equals(aggFunc)) {
-            return new MergeValueCountsAggFunc(inDataType);
+        } else if ("VALUE_COUNTS".equals(aggFunc)) {
+            return new ValueCountsAggFunc(inDataType);
         }
 
         throw new RuntimeException(String.format("Unsupported aggregation function %s", aggFunc));

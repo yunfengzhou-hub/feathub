@@ -17,40 +17,33 @@
 package com.alibaba.feathub.flink.udf.aggregation;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.table.types.DataType;
 
 import java.io.Serializable;
 
-// TODO: Update AbstractTimeWindowedAggFunc to reuse the implementations of AggFunc.
 /**
- * Interface of aggregation function. The aggregation function can aggregate any number of records
- * with its timestamp and get the aggregation result.
+ * Interface for functions that perform the pre-aggregation process for corresponding {@link
+ * AggFunc}s.
  */
-public interface AggFunc<IN_T, OUT_T, ACC_T> extends Serializable {
-
+public interface PreAggFunc<IN_T, OUT_T, ACC_T> extends Serializable {
     /**
      * Aggregate the value with the timestamp.
      *
      * @param value The value.
      * @param timestamp The timestamp of the value.
      */
-    void add(ACC_T accumulator, IN_T value, long timestamp);
-
-    /**
-     * Retract the given value.
-     *
-     * @param value The value to be retracted.
-     */
-    void retract(ACC_T accumulator, IN_T value);
+    void add(ACC_T acc, IN_T value, long timestamp);
 
     /** @return The aggregation result. */
-    OUT_T getResult(ACC_T accumulator);
-
-    /** @return The DataType of the aggregation result. */
-    DataType getResultDatatype();
+    OUT_T getResult(ACC_T acc);
 
     /** @return The new accumulator of the aggregation function. */
     ACC_T createAccumulator();
+
+    /** Merges the contents of the source accumulator into the target accumulator. */
+    void merge(ACC_T target, ACC_T source);
+
+    /** @return The type info of the aggregation result. */
+    TypeInformation<OUT_T> getResultTypeInformation();
 
     /** @return The type info of the accumulator. */
     TypeInformation<ACC_T> getAccumulatorTypeInformation();
