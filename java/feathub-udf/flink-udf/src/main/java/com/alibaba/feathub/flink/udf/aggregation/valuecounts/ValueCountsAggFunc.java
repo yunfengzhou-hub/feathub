@@ -52,7 +52,7 @@ public class ValueCountsAggFunc
             long newCnt = accumulator.valueCounts.get(key) - entry.getValue();
             if (newCnt == 0) {
                 accumulator.valueCounts.remove(key);
-                return;
+                continue;
             }
             accumulator.valueCounts.put(key, newCnt);
         }

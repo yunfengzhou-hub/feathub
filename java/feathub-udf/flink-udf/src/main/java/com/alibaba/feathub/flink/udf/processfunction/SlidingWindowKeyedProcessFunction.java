@@ -26,6 +26,7 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.common.typeutils.base.ListSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
@@ -40,8 +41,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A KeyedProcessFunction that aggregate sliding windows with different sizes. The ProcessFunction
@@ -55,14 +58,8 @@ import java.util.List;
  * example, if we want to do aggregation under 1 hour and 2 hours, both sliding window will keep the
  * rows in the last one hour, which are duplicated. With this process function, we only keep the
  * rows for the maximum window size so that we can avoid duplicated rows in state backend.
- *
- * <p>The ProcessFunction assumes that: 1. rows of each key are ordered by the row time 2. row time
- * attribute of rows with the same key are all distinct. The assumptions hold true after applying
- * the tumbling window aggregation to the input with window size that is same as the step size of
- * the {@link SlidingWindowKeyedProcessFunction} to be applied.
  */
 public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row, Row, Row> {
-
     private final AggregationFieldsDescriptor aggregationFieldsDescriptor;
     private final TypeSerializer<Row> inputRowTypeSerializer;
     private final TypeSerializer<Row> outputRowTypeSerializer;
@@ -121,15 +118,62 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             throws Exception {
         final long rowTime = ((Instant) row.getFieldAs(rowTimeFieldName)).toEpochMilli();
 
-        if (skipSameWindowOutput) {
-            // Only register timer on the event time of the row and on the row expire time.
-            ctx.timerService().registerEventTimeTimer(rowTime);
-            for (AggregationFieldsDescriptor.AggregationFieldDescriptor aggFieldDescriptor :
-                    aggregationFieldsDescriptor.getAggFieldDescriptors()) {
-                ctx.timerService()
-                        .registerEventTimeTimer(rowTime + aggFieldDescriptor.windowSizeMs);
+        long maxTriggeredTimer =
+                state.maxTriggeredTimer.value() == null
+                        ? Long.MIN_VALUE
+                        : state.maxTriggeredTimer.value();
+
+        if (rowTime + aggregationFieldsDescriptor.getMaxWindowSizeMs()
+                <= ctx.timerService().currentWatermark()) {
+            // TODO: Add metrics to record such data.
+            return;
+        }
+
+        if (rowTime > maxTriggeredTimer) {
+            state.addRow(rowTime, row, null);
+
+            if (skipSameWindowOutput) {
+                ctx.timerService().registerEventTimeTimer(rowTime);
+
+                for (AggregationFieldsDescriptor.AggregationFieldDescriptor descriptor :
+                        aggregationFieldsDescriptor.getAggFieldDescriptors()) {
+                    ctx.timerService().registerEventTimeTimer(rowTime + descriptor.windowSizeMs);
+                }
             }
         } else {
+            Row accumulatorStates = state.getAccumulatorStates();
+            Set<Integer> affectedFieldIndices = new HashSet<>();
+
+            for (AggregationFieldsDescriptor.AggregationFieldDescriptor descriptor :
+                    aggregationFieldsDescriptor.getAggFieldDescriptors()) {
+                final int aggFieldIdx = aggregationFieldsDescriptor.getAggFieldIdx(descriptor);
+                final long timeToRetract = rowTime + descriptor.windowSizeMs;
+
+                if (timeToRetract <= maxTriggeredTimer) {
+                    continue;
+                }
+
+                affectedFieldIndices.add(aggFieldIdx);
+
+                Object accumulatorState = accumulatorStates.getField(aggFieldIdx);
+                Object preAggResult = row.getField(descriptor.outFieldName);
+                descriptor.aggFunc.add(accumulatorState, preAggResult, rowTime);
+                accumulatorStates.setField(aggFieldIdx, accumulatorState);
+
+                if (skipSameWindowOutput) {
+                    ctx.timerService().registerEventTimeTimer(timeToRetract);
+                }
+            }
+
+            state.addRow(rowTime, row, affectedFieldIndices);
+            state.updateAccumulatorStates(accumulatorStates);
+
+            if (skipSameWindowOutput) {
+                ctx.timerService().registerEventTimeTimer(maxTriggeredTimer + stepSizeMs);
+            }
+        }
+
+        if (!skipSameWindowOutput) {
             Long triggerTime = state.maxRegisteredTimer.value();
             if (triggerTime == null) {
                 triggerTime = rowTime;
@@ -146,8 +190,6 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             }
             state.maxRegisteredTimer.update(triggerTime - stepSizeMs);
         }
-
-        state.addRow(rowTime, row);
     }
 
     @Override
@@ -156,7 +198,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             KeyedProcessFunction<Row, Row, Row>.OnTimerContext ctx,
             Collector<Row> out)
             throws Exception {
-
+        state.maxTriggeredTimer.update(timestamp);
         boolean hasRow = false;
 
         final List<Long> timestampList = state.getTimestampList();
@@ -167,7 +209,6 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             outputRow.setField(keyFieldNames[i], ctx.getCurrentKey().getField(i));
         }
 
-        Row rowToAdd = state.timestampToRow.get(timestamp);
         final Row accumulatorStates = state.getAccumulatorStates();
         final List<Integer> leftIdxList = state.getLeftTimestampIdx();
 
@@ -175,9 +216,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 aggregationFieldsDescriptor.getAggFieldDescriptors()) {
             final int aggFieldIdx = aggregationFieldsDescriptor.getAggFieldIdx(descriptor);
             Object accumulatorState = accumulatorStates.getField(aggFieldIdx);
-            if (rowToAdd != null) {
-                descriptor.aggFunc.add(
-                        accumulatorState, rowToAdd.getField(descriptor.inFieldName), timestamp);
+            if (state.timestampToRow.contains(timestamp)) {
+                for (Row rowToAdd : state.timestampToRow.get(timestamp)) {
+                    descriptor.aggFunc.add(
+                            accumulatorState, rowToAdd.getField(descriptor.inFieldName), timestamp);
+                }
             }
 
             // Advance left idx and retract rows whose rowTime is out of the time window
@@ -188,9 +231,10 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 if (timestamp - descriptor.windowSizeMs < rowTime) {
                     break;
                 }
-                Row curRow = state.timestampToRow.get(rowTime);
-                descriptor.aggFunc.retract(
-                        accumulatorState, curRow.getField(descriptor.inFieldName));
+                for (Row curRow : state.timestampToRow.get(rowTime)) {
+                    descriptor.aggFunc.retract(
+                            accumulatorState, curRow.getField(descriptor.inFieldName));
+                }
             }
             if (leftIdx < timestampList.size() && timestampList.get(leftIdx) <= timestamp) {
                 // If the row time of the earliest row that is not retracted is less than or
@@ -238,7 +282,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
         private final AggregationFieldsDescriptor aggregationFieldsDescriptor;
 
         /** This MapState maps from row timestamp to the row. */
-        private final MapState<Long, Row> timestampToRow;
+        private final MapState<Long, List<Row>> timestampToRow;
 
         /**
          * This ListState keeps all the row timestamp that has been added to the timestampToRow
@@ -252,15 +296,21 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
          * aggregation field such that all entries before it must have been outside the time window
          * for this field. And it always points to the timestamp of the earliest row that has not
          * been retracted from the aggregation function of that field. This list has the same order
-         * of the aggregation fields.
+         * as the aggregation fields.
          */
         private final ValueState<List<Integer>> leftTimestampIdxList;
 
         /**
          * This ValueState keeps the maximum registered timer so that we don't try to register the
-         * same timer twice.
+         * same timer twice. Only used when skipSameWindowOutput is disabled.
          */
         private final ValueState<Long> maxRegisteredTimer;
+
+        /**
+         * This ValueState keeps the maximum triggered timer so that we only try to register timers
+         * whose timestamps are larger than this one.
+         */
+        private final ValueState<Long> maxTriggeredTimer;
 
         /**
          * This ValueState keeps the last output row so that we can handle last output row when it
@@ -275,10 +325,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
 
         private SlidingWindowState(
                 AggregationFieldsDescriptor aggregationFieldsDescriptor,
-                MapState<Long, Row> timestampToRow,
+                MapState<Long, List<Row>> timestampToRow,
                 ListState<Long> timestampList,
                 ValueState<List<Integer>> leftTimestampIdxList,
                 ValueState<Long> maxRegisteredTimer,
+                ValueState<Long> maxTriggeredTimer,
                 ValueState<Row> lastOutputRow,
                 ValueState<Row> accumulatorStates) {
             this.aggregationFieldsDescriptor = aggregationFieldsDescriptor;
@@ -286,6 +337,7 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
             this.timestampList = timestampList;
             this.leftTimestampIdxList = leftTimestampIdxList;
             this.maxRegisteredTimer = maxRegisteredTimer;
+            this.maxTriggeredTimer = maxTriggeredTimer;
             this.lastOutputRow = lastOutputRow;
             this.accumulatorStates = accumulatorStates;
         }
@@ -296,12 +348,12 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                 AggregationFieldsDescriptor aggregationFieldsDescriptor,
                 TypeSerializer<Row> inputRowTypeSerializer,
                 TypeSerializer<Row> outputRowTypeSerializer) {
-            final MapState<Long, Row> timestampToRow =
+            final MapState<Long, List<Row>> timestampToRow =
                     context.getMapState(
                             new MapStateDescriptor<>(
                                     "TimestampToRow",
                                     LongSerializer.INSTANCE,
-                                    inputRowTypeSerializer));
+                                    new ListSerializer<>(inputRowTypeSerializer)));
 
             final ListState<Long> listState =
                     context.getListState(
@@ -317,6 +369,11 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                     context.getState(
                             new ValueStateDescriptor<>(
                                     "MaxRegisteredTimer", LongSerializer.INSTANCE));
+
+            final ValueState<Long> maxTriggeredTimer =
+                    context.getState(
+                            new ValueStateDescriptor<>(
+                                    "maxTriggeredTimer", LongSerializer.INSTANCE));
 
             final ValueState<Row> lastOutputRow =
                     context.getState(
@@ -337,19 +394,57 @@ public class SlidingWindowKeyedProcessFunction extends KeyedProcessFunction<Row,
                     listState,
                     outFieldNameToLeftTimestampIdx,
                     maxRegisteredTimer,
+                    maxTriggeredTimer,
                     lastOutputRow,
                     accumulatorStates);
         }
 
         /**
-         * Add the row to the state.
+         * Add the row to the state and adjust left idx accordingly.
          *
          * @param timestamp The row time of the row.
-         * @param row The row to be added
+         * @param row The row to be added.
+         * @param affectedAggFieldIndices The indices of the agg fields that would add or have added
+         *     this row to their accumulator. If this value is null, it means that all agg fields
+         *     add this row.
          */
-        public void addRow(long timestamp, Row row) throws Exception {
-            timestampToRow.put(timestamp, row);
-            timestampList.add(timestamp);
+        public void addRow(long timestamp, Row row, Set<Integer> affectedAggFieldIndices)
+                throws Exception {
+            if (timestampToRow.contains(timestamp)) {
+                List<Row> rows = timestampToRow.get(timestamp);
+                rows.add(row);
+                timestampToRow.put(timestamp, rows);
+            } else {
+                timestampToRow.put(timestamp, new ArrayList<>(Collections.singletonList(row)));
+
+                List<Long> timestamps = getTimestampList();
+                int insertIdx = 0;
+                if (timestamps.isEmpty() || timestamps.get(timestamps.size() - 1) < timestamp) {
+                    insertIdx = timestamps.size();
+                    timestampList.add(timestamp);
+                } else {
+                    for (; insertIdx < timestamps.size(); insertIdx++) {
+                        if (timestamps.get(insertIdx) < timestamp) {
+                            continue;
+                        }
+                        timestamps.add(insertIdx, timestamp);
+                        break;
+                    }
+                    timestampList.update(timestamps);
+                }
+
+                List<Integer> leftIdxList = getLeftTimestampIdx();
+                for (AggregationFieldsDescriptor.AggregationFieldDescriptor aggFieldDescriptor :
+                        aggregationFieldsDescriptor.getAggFieldDescriptors()) {
+                    int aggFieldIdx =
+                            aggregationFieldsDescriptor.getAggFieldIdx(aggFieldDescriptor);
+                    if (affectedAggFieldIndices != null
+                            && !affectedAggFieldIndices.contains(aggFieldIdx)) {
+                        leftIdxList.set(aggFieldIdx, leftIdxList.get(aggFieldIdx) + 1);
+                    }
+                }
+                leftTimestampIdxList.update(leftIdxList);
+            }
         }
 
         /**
