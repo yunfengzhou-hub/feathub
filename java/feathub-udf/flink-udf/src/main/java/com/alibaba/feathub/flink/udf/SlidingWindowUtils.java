@@ -17,11 +17,15 @@
 package com.alibaba.feathub.flink.udf;
 
 import org.apache.flink.api.common.functions.AggregateFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -40,6 +44,7 @@ import org.apache.flink.types.Row;
 import com.alibaba.feathub.flink.udf.aggregation.PreAggFunc;
 import com.alibaba.feathub.flink.udf.processfunction.SlidingWindowKeyedProcessFunction;
 import com.alibaba.feathub.flink.udf.processfunction.SlidingWindowZeroValuedRowExpiredRowHandler;
+import org.apache.flink.util.OutputTag;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -107,7 +112,10 @@ public class SlidingWindowUtils {
         long offset = TimeZone.getTimeZone(tEnv.getConfig().getLocalTimeZone()).getRawOffset();
         offset = getModdedOffset(windowDescriptor.stepSize.toMillis(), -offset);
 
-        return stream.keyBy(
+        final OutputTag<Row> lateDataOutputTag = new OutputTag<Row>("late-data") {};
+
+        SingleOutputStreamOperator<Row> resultStream =
+                stream.keyBy(
                         (KeySelector<Row, Row>)
                                 value ->
                                         Row.of(
@@ -118,6 +126,7 @@ public class SlidingWindowUtils {
                         TumblingEventTimeWindows.of(
                                 Time.milliseconds(windowDescriptor.stepSize.toMillis()),
                                 Time.milliseconds(offset)))
+                .sideOutputLateData(lateDataOutputTag)
                 .aggregate(
                         new SlidingWindowPreprocessAggregateFunction(
                                 windowDescriptor.groupByKeys,
@@ -132,6 +141,22 @@ public class SlidingWindowUtils {
                         Types.ROW_NAMED(
                                 fieldNames.toArray(new String[0]),
                                 resultFieldTypes.toArray(new TypeInformation[0])));
+
+        DataStream<Row> lateDataStream =
+                resultStream
+                        .getSideOutput(lateDataOutputTag)
+                        .map(
+                                new LateDataToPreAggResultMapFunction(
+                                        aggDescriptors,
+                                        windowDescriptor.groupByKeys,
+                                        "__event_time_attribute__",
+                                        windowDescriptor.stepSize.toMillis(),
+                                        offset))
+                        .returns(Types.ROW_NAMED(
+                                fieldNames.toArray(new String[0]),
+                                resultFieldTypes.toArray(new TypeInformation[0])));
+
+        return stream.union(lateDataStream);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -455,5 +480,57 @@ public class SlidingWindowUtils {
                 rowTimeFieldName,
                 String.format("`%s` - INTERVAL '0.001' SECONDS", rowTimeFieldName));
         return builder.build();
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static class LateDataToPreAggResultMapFunction implements MapFunction<Row, Row> {
+        private final List<String> keyFieldNames;
+        private final String rowTimeFieldName;
+        private final long stepSize;
+        private final long offset;
+        private final Map<String, PreAggFunc> preAggFuncMap;
+
+        private LateDataToPreAggResultMapFunction(
+                AggregationFieldsDescriptor aggDescriptors,
+                List<String> keyFieldNames,
+                String rowTimeFieldName,
+                long stepSize,
+                long offset) {
+
+            this.preAggFuncMap = new HashMap<>();
+            for (AggregationFieldsDescriptor.AggregationFieldDescriptor descriptor: aggDescriptors.getAggFieldDescriptors()) {
+                this.preAggFuncMap.put(descriptor.outFieldName, descriptor.preAggFunc);
+            }
+            this.keyFieldNames = keyFieldNames;
+            this.rowTimeFieldName = rowTimeFieldName;
+            this.stepSize = stepSize;
+            this.offset = offset;
+        }
+
+        @Override
+        public Row map(Row row) throws Exception {
+            long timestamp = ((Instant) row.getFieldAs(rowTimeFieldName)).toEpochMilli();
+            Row result = Row.withNames();
+            for (Map.Entry<String, PreAggFunc> entry: preAggFuncMap.entrySet()) {
+                String fieldName = entry.getKey();
+                PreAggFunc preAggFunc = entry.getValue();
+                String value = row.getFieldAs(fieldName);
+                Object acc = preAggFunc.createAccumulator();
+                preAggFunc.add(acc, value, timestamp);
+                result.setField(fieldName, preAggFunc.getResult(acc));
+            }
+
+            result.setField(
+                    rowTimeFieldName,
+                    Instant.ofEpochMilli(
+                            getWindowTime(timestamp, stepSize, offset)));
+
+            result.setField("isLateData", true);
+
+            for (int i = 0; i < keyFieldNames.size(); i++) {
+                result.setField(keyFieldNames.get(i), row.getField(i));
+            }
+            return result;
+        }
     }
 }
