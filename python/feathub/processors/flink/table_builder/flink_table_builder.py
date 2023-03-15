@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from datetime import datetime, timedelta
-from typing import Union, Optional, List, Any, Dict, Sequence, Tuple
+from typing import Union, Optional, List, Any, Dict, Sequence, Tuple, Set, cast
 
 import pandas as pd
 from pyflink.table import (
@@ -30,6 +30,7 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
+from feathub.feature_views.sql_feature_view import SqlFeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.over_window_transform import (
@@ -69,6 +70,7 @@ from feathub.processors.flink.table_builder.source_sink_utils import (
     get_table_from_source,
 )
 from feathub.processors.flink.table_builder.udf import register_all_feathub_udf
+from feathub.registries.local_registry import LocalRegistry
 from feathub.registries.registry import Registry
 from feathub.table.table_descriptor import TableDescriptor
 
@@ -95,6 +97,11 @@ class FlinkTableBuilder:
         # NativeFlinkTable. This is used as a cache to avoid re-computing the native
         # flink table from the same TableDescriptor.
         self._built_tables: Dict[str, Tuple[TableDescriptor, NativeFlinkTable]] = {}
+
+        # Names of the TableDescriptors that are being built. This is used as a cache to
+        # avoid recursively building the same table, so as to resolve potential circular
+        # reference.
+        self._tables_being_built: Set[str] = set()
 
         register_all_feathub_udf(self.t_env)
 
@@ -184,6 +191,8 @@ class FlinkTableBuilder:
                 )
             return self._built_tables[features.name][1]
 
+        self._tables_being_built.add(features.name)
+
         if isinstance(features, FeatureTable):
             self._built_tables[features.name] = (
                 features,
@@ -199,10 +208,17 @@ class FlinkTableBuilder:
                 features,
                 self._get_table_from_sliding_feature_view(features),
             )
+        elif isinstance(features, SqlFeatureView):
+            self._built_tables[features.name] = (
+                features,
+                self._get_table_from_sql_feature_view(features),
+            )
         else:
             raise FeathubException(
                 f"Unsupported type '{type(features).__name__}' for '{features}'."
             )
+
+        self._tables_being_built.remove(features.name)
 
         return self._built_tables[features.name][1]
 
@@ -548,6 +564,29 @@ class FlinkTableBuilder:
         return tmp_table.select(
             *[native_flink_expr.col(field) for field in output_fields]
         )
+
+    def _get_table_from_sql_feature_view(
+        self, feature_view: SqlFeatureView
+    ) -> NativeFlinkTable:
+        for table_name in self._get_all_registered_table_names():
+            if (
+                table_name in self.t_env.list_temporary_views()
+                or table_name in self._tables_being_built
+            ):
+                continue
+            self.t_env.create_temporary_view(
+                table_name, self._get_table(self.registry.get_features(table_name))
+            )
+
+        return self.t_env.sql_query(feature_view.sql_statement)
+
+    # TODO: Add public API to get all registered features in a Registry instance
+    #  and remove this utility function.
+    def _get_all_registered_table_names(self) -> Set[str]:
+        if isinstance(self.registry, LocalRegistry):
+            return set(x for x in cast(LocalRegistry, self.registry).tables.keys())
+
+        raise FeathubException(f"Unsupported Registry type {type(self.registry)}.")
 
     @staticmethod
     def _apply_filter_if_any(
