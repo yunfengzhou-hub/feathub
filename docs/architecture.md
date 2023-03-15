@@ -49,7 +49,11 @@ other tables. Feathub currently supports the following types of FeatureViews.
   sliding window transformation.
 - `SlidingFeatureView` derives features by applying the given transformations on an 
   existing table. It supports per-row transformation and sliding window transformation. 
-  It does not table join or over window transformation.
+  It does not support join or over window transformation.
+- `SqlFeatureView` derives features by evaluating the given sql query statement
+  with a concrete Processor specified in `FeathubClient`. It supports most UDF
+  and sql syntax specified by the internal compute engine of the Processor, and
+  does not support Feathub transformations.
 
 `FeatureView` provides APIs to specify and access `Feature`s. Each `Feature` is
 defined by the following metadata:

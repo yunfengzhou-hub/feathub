@@ -30,6 +30,7 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
+from feathub.feature_views.sql_feature_view import SqlFeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.over_window_transform import (
@@ -198,6 +199,11 @@ class FlinkTableBuilder:
             self._built_tables[features.name] = (
                 features,
                 self._get_table_from_sliding_feature_view(features),
+            )
+        elif isinstance(features, SqlFeatureView):
+            self._built_tables[features.name] = (
+                features,
+                self._get_table_from_sql_feature_view(features),
             )
         else:
             raise FeathubException(
@@ -548,6 +554,20 @@ class FlinkTableBuilder:
         return tmp_table.select(
             *[native_flink_expr.col(field) for field in output_fields]
         )
+
+    def _get_table_from_sql_feature_view(
+        self, feature_view: SqlFeatureView
+    ) -> NativeFlinkTable:
+        for table_name in feature_view.possible_sources:
+            if table_name in self.t_env.list_temporary_views():
+                continue
+            self.t_env.create_temporary_view(
+                table_name, self._get_table(self.registry.get_features(table_name))
+            )
+
+        result_table = self.t_env.sql_query(feature_view.sql_statement)
+
+        return result_table
 
     @staticmethod
     def _apply_filter_if_any(
