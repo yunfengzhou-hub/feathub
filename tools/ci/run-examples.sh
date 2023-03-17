@@ -40,7 +40,7 @@ tar -xzf flink-"${FLINK_VERSION}"-bin-scala_2.12.tgz
 echo "Starting standalone Flink cluster."
 ./flink-"${FLINK_VERSION}"/bin/start-cluster.sh
 echo "Running Flink processor session mode quickstart."
-python python/feathub/examples/nyc_taxi_flink_session.py
+python python/feathub/examples/nyc_taxi.py --props-file python/feathub/examples/client_props/flink_processor_session_mode.json
 
 echo "Restarting standalone Flink cluster."
 ./flink-"${FLINK_VERSION}"/bin/stop-cluster.sh && sleep 2 && ./flink-"${FLINK_VERSION}"/bin/start-cluster.sh
@@ -63,4 +63,7 @@ done
 echo "Stopping standalone Flink cluster."
 ./flink-"${FLINK_VERSION}"/bin/stop-cluster.sh
 
-# TODO: Add execution for Spark processor quickstart
+python -m pip install "${wheel_file}[spark]"
+
+echo "Running Spark processor quickstart."
+python python/feathub/examples/nyc_taxi.py --props-file python/feathub/examples/client_props/spark_processor.json

@@ -1,6 +1,6 @@
 ## Flink Processor Quickstart
 
-In this document, we demonstrate how to run Feathub with Flink processor and  compute 
+In this document, we demonstrate how to run Feathub with Flink processor and compute 
 the Feathub feature with a local standalone Flink cluster.
 
 ### Install Flink 
@@ -29,9 +29,9 @@ to view the Flink dashboard and see that the cluster is up and running.
 
 ### Run demo
 Execute the following command to run the
-[nyc_taxi_flink_session.py](../../python/feathub/examples/nyc_taxi_flink_session.py) 
+[nyc_taxi.py](../../python/feathub/examples/nyc_taxi.py) 
 demo.
 
 ```bash
-$ python python/feathub/examples/nyc_taxi_flink_session.py
+$ python python/feathub/examples/nyc_taxi.py --props-file python/feathub/examples/client_props/flink_processor_session_mode.json
 ```

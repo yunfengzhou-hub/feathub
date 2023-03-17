@@ -11,8 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import argparse
+import json
+import os
+import pathlib
 import sys
+from typing import Any
+
 import pandas as pd
 import numpy as np
 from datetime import timedelta, datetime
@@ -40,27 +45,20 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 
 
-def main() -> None:
-    client = FeathubClient(
-        props={
-            "processor": {
-                "type": "local",
-                "local": {},
-            },
-            "registry": {
-                "type": "local",
-                "local": {
-                    "namespace": "default",
-                },
-            },
-            "feature_service": {
-                "type": "local",
-                "local": {},
-            },
-        }
+def _load_arguments() -> Any:
+    parser = argparse.ArgumentParser(description="FeatHub's quickstart example.")
+
+    props_file_dir = os.path.join(
+        pathlib.Path(__file__).parent.resolve(), "client_props"
+    )
+    parser.add_argument(
+        "--props-file",
+        required=False,
+        default=os.path.join(props_file_dir, "local_processor.json"),
+        help="FeathubClient property file name.",
     )
 
-    run_nyc_taxi_example(client)
+    return parser.parse_args()
 
 
 def run_nyc_taxi_example(client: FeathubClient) -> None:
@@ -284,4 +282,11 @@ def train_and_evaluate_accuracy(train_dataset: pd.DataFrame) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    args = _load_arguments()
+
+    props_file_name = args.props_file
+    with open(props_file_name) as f:
+        client_props = json.load(f)
+    client = FeathubClient(props=client_props)
+
+    run_nyc_taxi_example(client)

@@ -1,0 +1,18 @@
+{
+    "processor": {
+        "type": "spark",
+        "spark": {
+            "master": "local[1]"
+        }
+    },
+    "registry": {
+        "type": "local",
+        "local": {
+            "namespace": "default"
+        }
+    },
+    "feature_service": {
+        "type": "local",
+        "local": {}
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "processor": {
+        "type": "local",
+        "local": {}
+    },
+    "registry": {
+        "type": "local",
+        "local": {
+            "namespace": "default"
+        }
+    },
+    "feature_service": {
+        "type": "local",
+        "local": {}
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "processor": {
+        "type": "flink",
+        "flink": {
+            "rest.address": "localhost",
+            "rest.port": 8081
+        }
+    },
+    "online_store": {
+        "types": ["memory"],
+        "memory": {}
+    },
+    "registry": {
+        "type": "local",
+        "local": {
+            "namespace": "default"
+        }
+    },
+    "feature_service": {
+        "type": "local",
+        "local": {}
+    }
+}
