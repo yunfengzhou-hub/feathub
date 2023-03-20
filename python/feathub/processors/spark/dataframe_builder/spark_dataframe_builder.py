@@ -11,8 +11,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Any
 
+from pyspark.sql.types import DataType
+
+from feathub.common.utils import to_java_date_format
+
+from feathub.feature_views.transforms.sliding_window_transform import SlidingWindowTransform
+
+from feathub.feature_views.feature import Feature
+
+from feathub.feature_views.sliding_feature_view import SlidingFeatureView
 from pyspark.sql import DataFrame as NativeSparkDataFrame, functions
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, struct
@@ -31,12 +40,14 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.processors.constants import EVENT_TIME_ATTRIBUTE_NAME
 from feathub.processors.spark.dataframe_builder.aggregation_utils import (
-    AggregationFieldDescriptor,
+    AggregationFieldDescriptor, get_default_value_and_type,
 )
 from feathub.processors.spark.dataframe_builder.over_window_utils import (
     OverWindowDescriptor,
     evaluate_over_window_transform,
 )
+from feathub.processors.spark.dataframe_builder.sliding_window_utils import SlidingWindowDescriptor, \
+    evaluate_sliding_window_transform
 from feathub.processors.spark.dataframe_builder.source_sink_utils import (
     get_dataframe_from_source,
 )
@@ -129,17 +140,10 @@ class SparkDataFrameBuilder:
         source_dataframe = self._get_spark_dataframe(feature_view.get_resolved_source())
         tmp_dataframe = source_dataframe
 
-        dependent_features = []
+        dependent_features = self._get_dependent_features(feature_view)
         window_agg_map: Dict[
             OverWindowDescriptor, List[AggregationFieldDescriptor]
         ] = {}
-
-        for feature in feature_view.get_resolved_features():
-            for input_feature in feature.input_features:
-                if input_feature not in dependent_features:
-                    dependent_features.append(input_feature)
-            if feature not in dependent_features:
-                dependent_features.append(feature)
 
         # This list contains all per-row transform features listed after the first
         # OverWindowTransform feature in the dependent_features. These features
@@ -217,6 +221,171 @@ class SparkDataFrameBuilder:
             source_fields=source_dataframe.schema.fieldNames()
         )
         return tmp_dataframe.select(output_fields)
+
+    def _get_table_from_sliding_feature_view(
+        self, feature_view: SlidingFeatureView
+    ) -> NativeSparkDataFrame:
+        source_table = self._get_spark_dataframe(feature_view.get_resolved_source())
+        source_fields = source_table.get_schema().get_field_names()
+
+        dependent_features = self._get_dependent_features(feature_view)
+
+        tmp_dataframe = source_table
+        sliding_window_agg_map: Dict[
+            SlidingWindowDescriptor, List[AggregationFieldDescriptor]
+        ] = {}
+
+        # This list contains all per-row transform features listed after the first
+        # SlidingWindowTransform feature in the dependent_features.
+        per_row_transform_features_following_first_sliding_feature = []
+
+        for feature in dependent_features:
+            if isinstance(feature.transform, ExpressionTransform):
+                if len(sliding_window_agg_map) > 0:
+                    per_row_transform_features_following_first_sliding_feature.append(
+                        feature
+                    )
+                else:
+                    tmp_dataframe = self._evaluate_expression_transform(
+                        tmp_dataframe,
+                        feature.transform,
+                        feature.name,
+                        feature.dtype,
+                    )
+            elif isinstance(feature.transform, PythonUdfTransform):
+                if len(sliding_window_agg_map) > 0:
+                    per_row_transform_features_following_first_sliding_feature.append(
+                        feature
+                    )
+                else:
+                    tmp_dataframe = self._evaluate_python_udf_transform(
+                        tmp_dataframe,
+                        feature.transform,
+                        feature.name,
+                        feature.dtype,
+                    )
+            elif isinstance(feature.transform, SlidingWindowTransform):
+                if feature_view.timestamp_field is None:
+                    raise FeathubException(
+                        "SlidingFeatureView must have timestamp field for "
+                        "SlidingWindowTransform."
+                    )
+                transform = feature.transform
+                window_aggs = sliding_window_agg_map.setdefault(
+                    SlidingWindowDescriptor.from_sliding_window_transform(transform),
+                    [],
+                )
+                window_aggs.append(AggregationFieldDescriptor.from_feature(feature))
+            else:
+                raise FeathubTransformationException(
+                    f"Unsupported transformation type "
+                    f"{type(feature.transform).__name__} for feature {feature.name}."
+                )
+
+        agg_table = None
+        field_default_value: Dict[str, Tuple[Any, DataType]] = {}
+        for window_descriptor, agg_descriptors in sliding_window_agg_map.items():
+            for agg_descriptor in agg_descriptors:
+                field_default_value[
+                    agg_descriptor.field_name
+                ] = get_default_value_and_type(agg_descriptor)
+            tmp_agg_table = evaluate_sliding_window_transform(
+                self.t_env,
+                tmp_dataframe,
+                window_descriptor,
+                agg_descriptors,
+                feature_view.config,
+            )
+            if agg_table is None:
+                agg_table = tmp_agg_table
+            else:
+                join_keys = list(window_descriptor.group_by_keys)
+                join_keys.append(EVENT_TIME_ATTRIBUTE_NAME)
+                agg_table = full_outer_join_on_key_with_default_value(
+                    agg_table,
+                    tmp_agg_table,
+                    join_keys,
+                    field_default_value,
+                )
+
+        if agg_table is not None:
+            tmp_dataframe = agg_table
+
+        # Add the timestamp field according to the timestamp format from
+        # event time(window time).
+        if feature_view.timestamp_field is not None:
+            if feature_view.timestamp_format == "epoch":
+                tmp_dataframe = tmp_dataframe.add_columns(
+                    functions.expr(
+                        f"UNIX_TIMESTAMP(CAST(`{EVENT_TIME_ATTRIBUTE_NAME}` "
+                        f"AS STRING))"
+                    ).alias(feature_view.timestamp_field)
+                )
+            elif feature_view.timestamp_format == "epoch_millis":
+                tmp_dataframe = tmp_dataframe.add_columns(
+                    functions.expr(
+                        f"UNIX_TIMESTAMP_MILLIS(CAST(`{EVENT_TIME_ATTRIBUTE_NAME}` "
+                        f"AS STRING), '{self.t_env.get_config().get_local_timezone()}')"
+                    ).alias(feature_view.timestamp_field)
+                )
+            else:
+                java_datetime_format = to_java_date_format(
+                    feature_view.timestamp_format
+                ).replace(
+                    "'", "''"  # Escape single quote for sql
+                )
+                tmp_dataframe = tmp_dataframe.add_columns(
+                    functions.expr(
+                        f"DATE_FORMAT(`{EVENT_TIME_ATTRIBUTE_NAME}`, "
+                        f"'{java_datetime_format}')"
+                    ).alias(feature_view.timestamp_field)
+                )
+
+        for feature in per_row_transform_features_following_first_sliding_feature:
+            if isinstance(feature.transform, ExpressionTransform):
+                # This is a temporary solution to ignore the CURRENT_EVENT_TIME function
+                # as the event time (window time) is added above.
+                # TODO: Refactor FlinkAstEvaluator to properly handle CURRENT_EVENT_TIME
+                #  and expose CURRENT_EVENT_TIME as a built-in function of Feathub
+                #  expression.
+                if feature.transform.expr == "CURRENT_EVENT_TIME()":
+                    continue
+                tmp_dataframe = self._evaluate_expression_transform(
+                    tmp_dataframe,
+                    feature.transform,
+                    feature.name,
+                    feature.dtype,
+                )
+            elif isinstance(feature.transform, PythonUdfTransform):
+                tmp_dataframe = self._evaluate_python_udf_transform(
+                    tmp_dataframe,
+                    feature.transform,
+                    feature.name,
+                    feature.dtype,
+                )
+            else:
+                raise FeathubTransformationException(
+                    f"Unsupported transformation type: {type(feature.transform)}."
+                )
+
+        tmp_dataframe = self._apply_filter_if_any(tmp_dataframe, feature_view.filter_expr)
+
+        output_fields = self._get_output_fields(feature_view, source_fields)
+        return tmp_dataframe.select(
+            *[functions.col(field) for field in output_fields]
+        )
+    
+    @staticmethod
+    def _get_dependent_features(feature_view: FeatureView) -> List[Feature]:
+        dependent_features = []
+        for feature in feature_view.get_resolved_features():
+            for input_feature in feature.input_features:
+                if input_feature not in dependent_features:
+                    dependent_features.append(input_feature)
+            if feature not in dependent_features:
+                dependent_features.append(feature)
+
+        return dependent_features
 
     @staticmethod
     def _evaluate_python_udf_transform(

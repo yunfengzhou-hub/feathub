@@ -12,6 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from datetime import timedelta
+from typing import Any, Tuple
+
+from pyflink.table import DataTypes
 
 from feathub.common.exceptions import FeathubException
 from feathub.feature_views.feature import Feature
@@ -63,3 +66,37 @@ class AggregationFieldDescriptor:
             transform.agg_func,
             transform.window_size,
         )
+
+
+INTEGER_TYPES = {
+    type(DataTypes.TINYINT()),
+    type(DataTypes.SMALLINT()),
+    type(DataTypes.INT()),
+    type(DataTypes.BIGINT()),
+}
+
+FLOAT_TYPES = {type(DataTypes.FLOAT()), type(DataTypes.DOUBLE())}
+
+
+def get_default_value_and_type(
+    agg_descriptor: AggregationFieldDescriptor,
+) -> Tuple[Any, DataType]:
+    if (
+        agg_descriptor.agg_func == AggFunc.COUNT
+        or agg_descriptor.agg_func == AggFunc.SUM
+    ):
+        if type(agg_descriptor.field_data_type) in INTEGER_TYPES:
+            default_value: Any = 0
+        elif type(agg_descriptor.field_data_type) in FLOAT_TYPES:
+            default_value = 0.0
+        else:
+            raise FeathubException(
+                f"Unsupported DataType of AggFunc COUNT or SUM: "
+                f"{type(agg_descriptor.field_data_type)}"
+            )
+    else:
+        default_value = None
+    return (
+        default_value,
+        agg_descriptor.field_data_type,
+    )
