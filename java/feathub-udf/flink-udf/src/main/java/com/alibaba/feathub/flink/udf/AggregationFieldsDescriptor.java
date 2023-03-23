@@ -35,8 +35,7 @@ public class AggregationFieldsDescriptor implements Serializable {
 
     private Long maxWindowSizeMs;
 
-    private AggregationFieldsDescriptor(
-            List<AggregationFieldDescriptor> aggregationFieldDescriptors) {
+    AggregationFieldsDescriptor(List<AggregationFieldDescriptor> aggregationFieldDescriptors) {
         this.aggregationFieldDescriptors = aggregationFieldDescriptors;
         int idx = 0;
         for (AggregationFieldDescriptor descriptor : this.aggregationFieldDescriptors) {
@@ -114,17 +113,27 @@ public class AggregationFieldsDescriptor implements Serializable {
                 DataType outDataType,
                 Long windowSizeMs,
                 String aggFuncName) {
+            this(
+                    fieldName,
+                    outDataType,
+                    windowSizeMs,
+                    (AggFunc<Object, ?, Object>)
+                            AggFuncUtils.getAggFunc(aggFuncName, inDataType, true),
+                    (AggFunc<Object, ?, Object>)
+                            AggFuncUtils.getAggFunc(aggFuncName, inDataType, false));
+        }
+
+        public AggregationFieldDescriptor(
+                String fieldName,
+                DataType dataType,
+                Long windowSizeMs,
+                AggFunc<Object, ?, Object> aggFunc,
+                AggFunc<Object, ?, Object> aggFuncWithoutRetract) {
             this.fieldName = fieldName;
-            this.dataType = outDataType;
+            this.dataType = dataType;
             this.windowSizeMs = windowSizeMs;
-
-            this.aggFunc =
-                    (AggFunc<Object, ?, Object>)
-                            AggFuncUtils.getAggFunc(aggFuncName, inDataType, true);
-
-            this.aggFuncWithoutRetract =
-                    (AggFunc<Object, ?, Object>)
-                            AggFuncUtils.getAggFunc(aggFuncName, inDataType, false);
+            this.aggFunc = aggFunc;
+            this.aggFuncWithoutRetract = aggFuncWithoutRetract;
         }
     }
 }
