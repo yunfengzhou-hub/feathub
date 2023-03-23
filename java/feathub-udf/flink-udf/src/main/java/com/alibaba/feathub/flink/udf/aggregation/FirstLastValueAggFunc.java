@@ -16,21 +16,13 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.util.Preconditions;
-
-import java.util.Iterator;
-import java.util.LinkedList;
 
 /** Aggregate function that get the first value or last value. */
-public class FirstLastValueAggFunc<T>
-        implements AggFunc<T, T, FirstLastValueAggFunc.FirstLastValueAccumulator<T>> {
+public class FirstLastValueAggFunc<T> extends AbstractRawDataAggFunc<T, T> {
 
     private final DataType inDataType;
-    protected final boolean isFirstValue;
+    private final boolean isFirstValue;
 
     public FirstLastValueAggFunc(DataType inDataType, boolean isFirstValue) {
         this.inDataType = inDataType;
@@ -38,89 +30,7 @@ public class FirstLastValueAggFunc<T>
     }
 
     @Override
-    public void add(FirstLastValueAccumulator<T> acc, T value, long timestamp) {
-        if (acc.rawDataList.isEmpty() || timestamp >= acc.rawDataList.getLast().f1) {
-            acc.rawDataList.add(Tuple2.of(value, timestamp));
-            return;
-        }
-
-        int index = -1;
-        for (Tuple2<T, Long> tuple2 : acc.rawDataList) {
-            index++;
-            if (tuple2.f1 > timestamp) {
-                break;
-            }
-        }
-
-        acc.rawDataList.add(index, Tuple2.of(value, timestamp));
-    }
-
-    @Override
-    public void merge(FirstLastValueAccumulator<T> target, FirstLastValueAccumulator<T> source) {
-        if (source.rawDataList.isEmpty()) {
-            return;
-        }
-
-        if (target.rawDataList.isEmpty()) {
-            target.rawDataList.addAll(source.rawDataList);
-            return;
-        }
-
-        Iterator<Tuple2<T, Long>> iterator0 = target.rawDataList.iterator();
-        Iterator<Tuple2<T, Long>> iterator1 = source.rawDataList.iterator();
-        Tuple2<T, Long> tuple0 = getNextOrNull(iterator0);
-        Tuple2<T, Long> tuple1 = getNextOrNull(iterator1);
-        target.rawDataList = new LinkedList<>();
-        while (tuple0 != null && tuple1 != null) {
-            if (tuple0.f1 < tuple1.f1) {
-                target.rawDataList.add(tuple0);
-                tuple0 = getNextOrNull(iterator0);
-            } else {
-                target.rawDataList.add(tuple1);
-                tuple1 = getNextOrNull(iterator1);
-            }
-        }
-
-        while (tuple0 != null) {
-            target.rawDataList.add(tuple0);
-            tuple0 = getNextOrNull(iterator0);
-        }
-
-        while (tuple1 != null) {
-            target.rawDataList.add(tuple1);
-            tuple1 = getNextOrNull(iterator1);
-        }
-    }
-
-    private static <T> T getNextOrNull(Iterator<T> iterator) {
-        if (iterator.hasNext()) {
-            return iterator.next();
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public void retract(FirstLastValueAccumulator<T> accumulator, T value) {
-        Preconditions.checkState(
-                accumulator.rawDataList.getFirst().f0.equals(value),
-                "Value must be retracted by the ordered as they added to the FirstLastValueAggFuncBase.");
-        accumulator.rawDataList.removeFirst();
-    }
-
-    @Override
-    public void retractAccumulator(
-            FirstLastValueAccumulator<T> target, FirstLastValueAccumulator<T> source) {
-        for (Tuple2<T, Long> value : source.rawDataList) {
-            Preconditions.checkState(
-                    target.rawDataList.getFirst().equals(value),
-                    "Value must be retracted by the order as they added to the AggFuncWithLimit.");
-            target.rawDataList.removeFirst();
-        }
-    }
-
-    @Override
-    public T getResult(FirstLastValueAccumulator<T> accumulator) {
+    public T getResult(RawDataAccumulator<T> accumulator) {
         if (accumulator.rawDataList.isEmpty()) {
             return null;
         }
@@ -134,20 +44,5 @@ public class FirstLastValueAggFunc<T>
     @Override
     public DataType getResultDatatype() {
         return inDataType;
-    }
-
-    @Override
-    public FirstLastValueAccumulator<T> createAccumulator() {
-        return new FirstLastValueAccumulator<>();
-    }
-
-    @Override
-    public TypeInformation getAccumulatorTypeInformation() {
-        return Types.POJO(FirstLastValueAccumulator.class);
-    }
-
-    /** Accumulator that collects raw data and their timestamps. */
-    public static class FirstLastValueAccumulator<T> {
-        public LinkedList<Tuple2<T, Long>> rawDataList = new LinkedList<>();
     }
 }

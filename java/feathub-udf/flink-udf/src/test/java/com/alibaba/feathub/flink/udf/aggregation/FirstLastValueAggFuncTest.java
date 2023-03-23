@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Test for {@link FirstLastValueAggFunc}. */
+@SuppressWarnings({"rawtypes", "unchecked"})
 class FirstLastValueAggFuncTest {
     @Test
     void tesFirstValue() {
@@ -31,10 +32,8 @@ class FirstLastValueAggFuncTest {
                 new FirstLastValueAggFuncWithoutRetract<>(DataTypes.INT(), true), false);
     }
 
-    private void testFirstValueInternal(
-            final FirstLastValueAggFunc<Integer> aggFunc, boolean testRetract) {
-        final FirstLastValueAggFunc.FirstLastValueAccumulator<Integer> accumulator =
-                aggFunc.createAccumulator();
+    private void testFirstValueInternal(final AggFunc aggFunc, boolean testRetract) {
+        final Object accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 0, 0);
         aggFunc.add(accumulator, 1, 1);
@@ -54,10 +53,8 @@ class FirstLastValueAggFuncTest {
                 new FirstLastValueAggFuncWithoutRetract<>(DataTypes.INT(), false), false);
     }
 
-    private void testLastValueInternal(
-            final FirstLastValueAggFunc<Integer> aggFunc, boolean testRetract) {
-        final FirstLastValueAggFunc.FirstLastValueAccumulator<Integer> accumulator =
-                aggFunc.createAccumulator();
+    private void testLastValueInternal(final AggFunc aggFunc, boolean testRetract) {
+        final Object accumulator = aggFunc.createAccumulator();
         assertThat(aggFunc.getResult(accumulator)).isNull();
         aggFunc.add(accumulator, 0, 0);
         aggFunc.add(accumulator, 1, 1);

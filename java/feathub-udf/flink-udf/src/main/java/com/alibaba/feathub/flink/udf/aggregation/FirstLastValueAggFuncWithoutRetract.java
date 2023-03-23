@@ -16,6 +16,8 @@
 
 package com.alibaba.feathub.flink.udf.aggregation;
 
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.types.DataType;
 
@@ -24,13 +26,18 @@ import org.apache.flink.table.types.DataType;
  *
  * <p>Implementation is optimized based on the assumption that no retraction is required.
  */
-public class FirstLastValueAggFuncWithoutRetract<T> extends FirstLastValueAggFunc<T> {
+public class FirstLastValueAggFuncWithoutRetract<T>
+        implements AggFunc<T, T, AbstractRawDataAggFunc.RawDataAccumulator<T>> {
+    private final DataType inDataType;
+    private final boolean isFirstValue;
+
     public FirstLastValueAggFuncWithoutRetract(DataType inDataType, boolean isFirstValue) {
-        super(inDataType, isFirstValue);
+        this.inDataType = inDataType;
+        this.isFirstValue = isFirstValue;
     }
 
     @Override
-    public T getResult(FirstLastValueAccumulator<T> acc) {
+    public T getResult(AbstractRawDataAggFunc.RawDataAccumulator<T> acc) {
         if (acc.rawDataList.isEmpty()) {
             return null;
         }
@@ -38,7 +45,7 @@ public class FirstLastValueAggFuncWithoutRetract<T> extends FirstLastValueAggFun
     }
 
     @Override
-    public void add(FirstLastValueAccumulator<T> acc, T value, long timestamp) {
+    public void add(AbstractRawDataAggFunc.RawDataAccumulator<T> acc, T value, long timestamp) {
         if (acc.rawDataList.isEmpty()
                 || (!isFirstValue && timestamp > acc.rawDataList.getLast().f1)
                 || (isFirstValue && timestamp < acc.rawDataList.getLast().f1)) {
@@ -48,7 +55,9 @@ public class FirstLastValueAggFuncWithoutRetract<T> extends FirstLastValueAggFun
     }
 
     @Override
-    public void merge(FirstLastValueAccumulator<T> target, FirstLastValueAccumulator<T> source) {
+    public void merge(
+            AbstractRawDataAggFunc.RawDataAccumulator<T> target,
+            AbstractRawDataAggFunc.RawDataAccumulator<T> source) {
         if (target.rawDataList.isEmpty()) {
             target.rawDataList.addAll(source.rawDataList);
             return;
@@ -69,13 +78,29 @@ public class FirstLastValueAggFuncWithoutRetract<T> extends FirstLastValueAggFun
     }
 
     @Override
-    public void retract(FirstLastValueAccumulator<T> accumulator, T value) {
+    public void retract(AbstractRawDataAggFunc.RawDataAccumulator<T> accumulator, T value) {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public void retractAccumulator(
-            FirstLastValueAccumulator<T> target, FirstLastValueAccumulator<T> source) {
+            AbstractRawDataAggFunc.RawDataAccumulator<T> target,
+            AbstractRawDataAggFunc.RawDataAccumulator<T> source) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DataType getResultDatatype() {
+        return inDataType;
+    }
+
+    @Override
+    public AbstractRawDataAggFunc.RawDataAccumulator<T> createAccumulator() {
+        return new AbstractRawDataAggFunc.RawDataAccumulator<>();
+    }
+
+    @Override
+    public TypeInformation getAccumulatorTypeInformation() {
+        return Types.POJO(AbstractRawDataAggFunc.RawDataAccumulator.class);
     }
 }
