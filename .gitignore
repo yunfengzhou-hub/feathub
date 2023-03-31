@@ -22,3 +22,5 @@ target
 build
 dist
 *.egg-info
+*.ipynb_checkpoints
+docs/samples/*.csv

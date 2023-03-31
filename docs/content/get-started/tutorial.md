@@ -1,3 +1,6 @@
+ [![Open In
+ Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/alibaba/feathub/blob/master/docs/samples/nyc_taxi.ipynb)
+
 # Tutorial
 
 This tutorial shows how to use FeatHub to achieve the following objectives:
@@ -14,7 +17,8 @@ GradientBoostingRegressor model on the NYC Taxi Records
 predict taxi fares, evaluates the prediction accuracy, and materialize features
 into online feature store for online feature serving.
 
-See [README](../../../README.md#quickstart) for the instruction to run this demo.
+See [README](../../../README.md#quickstart) for the instruction to run this
+demo.
 
 ## Initialize FeatHub client
 
