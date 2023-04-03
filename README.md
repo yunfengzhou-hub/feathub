@@ -230,15 +230,21 @@ $ python python/feathub/examples/nyc_taxi.py
 You can use the following quickstart guides to compute features in a Flink
 cluster with different deployment modes:
 
-- [Flink Processor Session Mode Quickstart](docs/content/get-started/quickstarts/flink-session-mode.md)
-- [Flink Processor Cli Mode Quickstart](docs/content/get-started/quickstarts/flink-cli-mode.md)
+- [Flink Processor Session Mode Quickstart](docs/content/get-started/flink-session-mode.md)
+- [Flink Processor Cli Mode Quickstart](docs/content/get-started/flink-cli-mode.md)
 
 #### Quickstart using Apache Spark cluster
 
 You can use the following quickstart guides to compute features in a standalone
 Spark cluster.
 
-- [Spark Processor Client Mode Quickstart](docs/content/get-started/quickstarts/spark-client-mode.md)
+- [Spark Processor Client Mode Quickstart](docs/content/get-started/spark-client-mode.md)
+
+### Samples
+
+| Name                                           | Description                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| [NYC Taxi Demo](./docs/samples/nyc_taxi.ipynb) | Quickstart notebook that demonstrates how to define, extract, transform and materialize features with NYC taxi-fare prediction sample data. |
 
 ## Developer Guide
 
