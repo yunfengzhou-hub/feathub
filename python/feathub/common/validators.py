@@ -78,3 +78,16 @@ def is_subset(*allowed: T) -> Validator[ITER_T]:
     :param allowed: Allowed values.
     """
     return IsSubSetValidator(*allowed)
+
+
+class NotNoneValidator(Validator[T]):
+    def ensure_valid(self, name: str, value: T) -> None:
+        if value is None:
+            raise FeathubConfigurationException(f"Value of {name} should not be none.")
+
+
+def not_none() -> Validator[T]:
+    """
+    Returns a validator check if the value is not None.
+    """
+    return NotNoneValidator()
