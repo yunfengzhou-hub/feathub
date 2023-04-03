@@ -117,3 +117,42 @@ Arguments:
   regarded as valid format patterns. See [Python's strftime() and strptime()
   Behavior](https://docs.python.org/3.7/library/datetime.html#strftime-strptime-behavior)
   for a brief list of and introduction to these format patterns.
+
+## Aggregation Functions
+
+| Signature | Description |
+| --------- | ----------- |
+| AVG       |             |
+| SUM       |             |
+| MAX       |             |
+| MIN       |             |
+|           |             |
+|           |             |
+|           |             |
+|           |             |
+|           |             |
+
+
+
+### AVG
+
+### SUM
+
+### MAX
+
+### MIN
+
+### FIRST_VALUE
+
+### LAST_VALUE
+
+### ROW_NUMBER
+
+### COUNT
+
+### VALUE_COUNTS
+
+
+
+
+
