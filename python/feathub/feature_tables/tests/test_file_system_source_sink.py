@@ -63,4 +63,23 @@ class FileSystemSourceSinkITTest(ABC, FeathubITTestBase):
         df = self.client.get_features(source).to_pandas()
         self.assertTrue(self.input_data.equals(df))
 
+    def test_read_csv_file_with_header(self):
+        sink_path = tempfile.NamedTemporaryFile(dir=self.temp_dir, suffix=".csv").name
+
+        self.input_data.to_csv(sink_path)
+
+        source = FileSystemSource(
+            name=self.generate_random_name("source"),
+            path=sink_path,
+            data_format="csv",
+            schema=self.schema,
+        )
+
+        df = self.client.get_features(source).to_pandas()
+
+        print(df)
+        print(self.input_data)
+        self.assertTrue(self.input_data.equals(df))
+
+
     # TODO: Add test case to verify allow_overwrite.

@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import csv
 import glob
 import os
 
@@ -40,6 +41,13 @@ def _get_dataframe_from_file_path(
     file_path: str, data_format: str, schema: Schema
 ) -> pd.DataFrame:
     if data_format == "csv":
+        header = "infer"
+        with open(file_path, 'rb') as csvfile:
+            sniffer = csv.Sniffer()
+            sample: str = csvfile.read(2048).decode('utf-8')
+            if sniffer.has_header(sample):
+                header = 0
+
         return pd.read_csv(
             file_path,
             names=schema.field_names,
@@ -47,6 +55,7 @@ def _get_dataframe_from_file_path(
                 name: to_numpy_dtype(dtype)
                 for name, dtype in zip(schema.field_names, schema.field_types)
             },
+            header=header,
         )
     elif data_format == "json":
         return pd.read_json(
