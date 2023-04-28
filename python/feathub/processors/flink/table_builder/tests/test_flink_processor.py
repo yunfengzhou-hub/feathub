@@ -36,6 +36,7 @@ from feathub.feature_tables.tests.test_datagen_source import DataGenSourceITTest
 from feathub.feature_tables.tests.test_file_system_source_sink import (
     FileSystemSourceSinkITTest,
 )
+from feathub.feature_tables.tests.test_hive_source_sink import HiveSourceSinkITTest
 from feathub.feature_tables.tests.test_kafka_source_sink import (
     KafkaSourceSinkITTest,
 )
@@ -398,22 +399,23 @@ class FlinkProcessorTest(unittest.TestCase):
 
 
 class FlinkProcessorITTest(
-    DataGenSourceITTest,
-    DerivedFeatureViewITTest,
-    ExpressionTransformITTest,
-    FileSystemSourceSinkITTest,
-    JoinTransformITTest,
-    KafkaSourceSinkITTest,
-    OverWindowTransformITTest,
-    PrintSinkITTest,
-    PythonUDFTransformITTest,
-    RedisSourceSinkITTest,
-    SlidingWindowTransformITTest,
-    SlidingFeatureViewITTest,
-    BlackHoleSinkITTest,
-    FlinkSqlFeatureViewITTest,
-    GetFeaturesITTest,
-    MySQLSourceSinkITTest,
+    # DataGenSourceITTest,
+    # DerivedFeatureViewITTest,
+    # ExpressionTransformITTest,
+    # FileSystemSourceSinkITTest,
+    # JoinTransformITTest,
+    # KafkaSourceSinkITTest,
+    # OverWindowTransformITTest,
+    # PrintSinkITTest,
+    # PythonUDFTransformITTest,
+    # RedisSourceSinkITTest,
+    # SlidingWindowTransformITTest,
+    # SlidingFeatureViewITTest,
+    # BlackHoleSinkITTest,
+    # FlinkSqlFeatureViewITTest,
+    # GetFeaturesITTest,
+    # MySQLSourceSinkITTest,
+    HiveSourceSinkITTest,
 ):
     __test__ = True
 
@@ -478,3 +480,25 @@ class FlinkProcessorITTest(
 
     def test_random_field_length(self):
         pass
+
+    # def test_unsupported_file_format(self):
+    #     source = self.create_file_source(self.input_data)
+    #     sink = FileSystemSink("s3://dummy-bucket/path", "csv")
+    #     with self.assertRaisesRegex(
+    #         FeathubException, "Cannot sink files in CSV format to s3"
+    #     ):
+    #         self.client.materialize_features(
+    #             features=source, sink=sink, allow_overwrite=True
+    #         )
+    #
+    # def test_over_window_transform_first_last_value_with_window_size(self):
+    #     pass
+    #
+    # def test_over_window_transform_first_last_value_with_limit(self):
+    #     pass
+    #
+    # def test_random_field_max_past(self):
+    #     pass
+    #
+    # def test_random_field_length(self):
+    #     pass

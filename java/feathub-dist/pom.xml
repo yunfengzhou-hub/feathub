@@ -74,6 +74,12 @@
 
         <dependency>
             <groupId>com.alibaba.feathub</groupId>
+            <artifactId>flink-connector-hive</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.feathub</groupId>
             <artifactId>flink-udf</artifactId>
             <version>${project.version}</version>
         </dependency>
