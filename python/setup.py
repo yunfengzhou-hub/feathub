@@ -30,36 +30,40 @@ def remove_if_exists(file_path):
             rmtree(file_path)
 
 
-class BuildCommand(build):
-    def run(self):
-        self.run_command("generate_py_protobufs")
-        return super().run()
-
-
-# check protoc command and version
-if not which("protoc"):
-    print(
-        "Command 'protoc' not found. Please make sure protoc 3.17 "
-        "is installed in the local environment."
-    )
-    sys.exit(-1)
-
-protoc_version = subprocess.check_output(
-    ["protoc", "--version"], stderr=subprocess.STDOUT
-)
-if not protoc_version.startswith(b"libprotoc 3.17"):
-    print(
-        f"protoc '{protoc_version}' is installed in the local environment, "
-        f"while FeatHub has only been verified with protoc 3.17.x."
-    )
-    sys.exit(-1)
+# class BuildCommand(build):
+#     def run(self):
+#         self.run_command("generate_py_protobufs")
+#         return super().run()
+#
+#
+# # check protoc command and version
+# if not which("protoc"):
+#     print(
+#         "Command 'protoc' not found. Please make sure protoc 3.17 "
+#         "is installed in the local environment."
+#     )
+#     sys.exit(-1)
+#
+# protoc_version = subprocess.check_output(
+#     ["protoc", "--version"], stderr=subprocess.STDOUT
+# )
+# if not protoc_version.startswith(b"libprotoc 3.17"):
+#     print(
+#         f"protoc '{protoc_version}' is installed in the local environment, "
+#         f"while FeatHub has only been verified with protoc 3.17.x."
+#     )
+#     sys.exit(-1)
 
 # clear setup cache directories
 remove_if_exists("build")
 
+__file__ = "/root/dev-spark/python/setup.py"
+
 this_directory = os.path.abspath(os.path.dirname(__file__))
 nightly_build = os.getenv("NIGHTLY_BUILD") == "true"
 version_file = os.path.join(this_directory, "feathub/version.py")
+print(f"this directory {this_directory}")
+print(f"__file__ {__file__}")
 
 try:
     exec(open(version_file).read())
@@ -88,7 +92,9 @@ FEATHUB_FLINK_PROCESSOR_LIB_DIR = os.path.join(
     f"feathub-dist-{feathub_version}",
     "lib",
 )
-in_feathub_source = os.path.isfile("../java/feathub-dist/pom.xml")
+# in_feathub_source = os.path.isfile(this_directory + "/../java/feathub-dist/pom.xml")
+in_feathub_source = os.path.isfile(this_directory + "/../java/feathub-dist/pom.xml")
+print(f"all files {os.listdir('..')}")
 
 if nightly_build:
     if "dev" not in VERSION:
@@ -100,8 +106,10 @@ if nightly_build:
 
 
 try:
+    print(f"in_feathub_source {in_feathub_source}")
     if in_feathub_source:
         try:
+            print(f"creating {TEMP_PATH}")
             os.mkdir(TEMP_PATH)
         except:
             print(
@@ -160,9 +168,9 @@ try:
         package_dir=PACKAGE_DIR,
         package_data=PACKAGE_DATA,
         setup_requires=["protobuf_distutils"],
-        cmdclass={
-            "build": BuildCommand,
-        },
+        # cmdclass={
+        #     "build": BuildCommand,
+        # },
         options={
             "generate_py_protobufs": {
                 "source_dir": os.path.join(this_directory, "feathub/common/protobuf"),

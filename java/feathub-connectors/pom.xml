@@ -28,6 +28,7 @@
     <artifactId>feathub-connectors</artifactId>
     <modules>
         <module>flink-connectors</module>
+        <module>flink-connectors/flink-connector-hive</module>
     </modules>
 
 

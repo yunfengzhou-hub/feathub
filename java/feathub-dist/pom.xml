@@ -29,6 +29,7 @@
 
     <properties>
         <mysql.driver.version>8.0.32</mysql.driver.version>
+        <hive.version>2.3.4</hive.version>
     </properties>
 
     <dependencies>
@@ -70,6 +71,24 @@
                     <artifactId>json</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-hive_2.12</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hive</groupId>
+            <artifactId>hive-exec</artifactId>
+            <version>${hive.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr-runtime</artifactId>
+            <version>3.5.2</version>
         </dependency>
 
         <dependency>
