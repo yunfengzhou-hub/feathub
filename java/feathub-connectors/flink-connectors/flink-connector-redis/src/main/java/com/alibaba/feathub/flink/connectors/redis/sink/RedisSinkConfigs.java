@@ -21,18 +21,19 @@ import org.apache.flink.configuration.ConfigOptions;
 
 /** Configurations used by Redis sink. */
 public class RedisSinkConfigs {
+    static final ConfigOption<RedisMode> REDIS_MODE =
+            ConfigOptions.key("mode")
+                    .enumType(RedisMode.class)
+                    .defaultValue(RedisMode.STANDALONE)
+                    .withDescription("The deployment mode of the Redis service to connect.");
 
-    static final ConfigOption<String> HOST =
-            ConfigOptions.key("host")
+    static final ConfigOption<String> SERVERS =
+            ConfigOptions.key("servers")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("The host of the Redis instance to connect.");
-
-    static final ConfigOption<Integer> PORT =
-            ConfigOptions.key("port")
-                    .intType()
-                    .noDefaultValue()
-                    .withDescription("The port of the Redis instance to connect.");
+                    .withDescription(
+                            "A list of host/port pairs of the Redis servers to connect."
+                                    + "The list should be in the form `host1:port1,host2:port2,...`.");
 
     static final ConfigOption<String> USERNAME =
             ConfigOptions.key("username")
@@ -50,7 +51,8 @@ public class RedisSinkConfigs {
             ConfigOptions.key("dbNum")
                     .intType()
                     .noDefaultValue()
-                    .withDescription("The No. of the Redis database to connect.");
+                    .withDescription(
+                            "The No. of the Redis database to connect. Not supported in cluster mode.");
 
     static final ConfigOption<String> NAMESPACE =
             ConfigOptions.key("namespace")
@@ -82,4 +84,10 @@ public class RedisSinkConfigs {
                                     + "key and namespace but different timestamp are written out "
                                     + "through this sink, the record with larger timestamp value "
                                     + "will finally be persisted to Redis.");
+
+    enum RedisMode {
+        STANDALONE,
+        MASTER_SLAVE,
+        CLUSTER,
+    }
 }
