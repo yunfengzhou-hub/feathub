@@ -26,11 +26,12 @@ from pyflink.table import (
 )
 from pyflink.table.expressions import col
 from pyflink.table.udf import udf
+from redis import RedisCluster
 
 from feathub.common import types
 from feathub.common.types import DType
 from feathub.common.utils import serialize_object_with_protobuf, to_unix_timestamp
-from feathub.feature_tables.sinks.redis_sink import RedisSink
+from feathub.feature_tables.sinks.redis_sink import RedisSink, RedisMode
 from feathub.processors.flink.flink_jar_utils import find_jar_lib, add_jar_to_t_env
 from feathub.processors.flink.flink_types_utils import to_feathub_schema
 from feathub.processors.flink.table_builder.source_sink_utils_common import (
@@ -60,11 +61,20 @@ def insert_into_redis_sink(
         features_desc.timestamp_field,
     )
 
+    if sink.mode == RedisMode.CLUSTER:
+        redis_client: RedisCluster = RedisCluster(host=sink.host, port=sink.port)
+        node_urls = ";".join(
+            f"http://{x.host}:{x.port}" for x in redis_client.get_nodes()
+        )
+        redis_client.close()
+    else:
+        node_urls = f"http://{sink.host}:{sink.port}"
+
     redis_sink_descriptor_builder = (
         NativeFlinkTableDescriptor.for_connector("redis")
         .schema(get_schema_from_table(features_table))
-        .option("host", sink.host)
-        .option("port", str(sink.port))
+        .option("mode", sink.mode.name)
+        .option("node_urls", node_urls)
         .option("dbNum", str(sink.db_num))
         .option("namespace", sink.namespace)
         .option("keyField", REDIS_SINK_KEY_FIELD_NAME)
@@ -94,6 +104,7 @@ def _get_redis_connector_jars() -> list:
         "flink-connector-redis-*.jar",
         "jedis-*.jar",
         "gson-*.jar",
+        "commons-pool2-*.jar",
     ]
     jars = []
     for x in jar_patterns:
