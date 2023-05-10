@@ -60,8 +60,8 @@ class RedisSourceSinkTest(unittest.TestCase):
             expected_options = {
                 "connector": "redis",
                 "namespace": "test_namespace",
-                "host": "127.0.0.1",
-                "port": "6379",
+                "mode": "STANDALONE",
+                "node_urls": "http://127.0.0.1:6379",
                 "password": "123456",
                 "dbNum": "3",
                 "keyField": "__redis_sink_key__",
