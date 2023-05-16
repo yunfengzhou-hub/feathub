@@ -142,3 +142,15 @@ class SqlFeatureView(FeatureView):
             "timestamp_format": self.timestamp_format,
             "is_bounded": self._is_bounded,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "SqlFeatureView":
+        return SqlFeatureView(
+            name=json_dict["name"],
+            sql_statement=json_dict["sql_statement"],
+            schema=Schema.from_json(json_dict["schema"]),
+            keys=json_dict["keys"],
+            timestamp_field=json_dict["timestamp_field"],
+            timestamp_format=json_dict["timestamp_format"],
+            is_bounded=json_dict["is_bounded"],
+        )

@@ -40,3 +40,10 @@ class JoinTransform(Transformation):
             "table_name": self.table_name,
             "feature_name": self.feature_name,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "JoinTransform":
+        return JoinTransform(
+            table_name=json_dict["table_name"],
+            feature_name=json_dict["feature_name"],
+        )

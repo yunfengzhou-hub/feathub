@@ -46,3 +46,11 @@ class FileSystemSink(Sink):
             "data_format": self.data_format,
             "data_format_props": self.data_format_props,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "FileSystemSink":
+        return FileSystemSink(
+            path=json_dict["path"],
+            data_format=json_dict["data_format"],
+            data_format_props=json_dict["data_format_props"],
+        )

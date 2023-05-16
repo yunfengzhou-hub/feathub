@@ -50,7 +50,7 @@ class Registry(ABC):
         referred by a TableDescriptor with the given global properties if it is not
         configured already.
 
-        And caches the resolved descriptors and well as their dependent table
+        And caches the resolved descriptors as well as their dependent table
         descriptors in memory so that they can be used when building other table
         descriptors.
 
@@ -110,6 +110,11 @@ class Registry(ABC):
             from feathub.registries.local_registry import LocalRegistry
 
             return LocalRegistry(props=props)
+
+        elif registry_type == RegistryType.MYSQL:
+            from feathub.registries.mysql_registry import MySqlRegistry
+
+            return MySqlRegistry(props=props)
 
         raise RuntimeError(f"Failed to instantiate registry with props={props}.")
 

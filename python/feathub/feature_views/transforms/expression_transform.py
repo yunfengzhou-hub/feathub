@@ -31,3 +31,7 @@ class ExpressionTransform(Transformation):
 
     def to_json(self) -> Dict:
         return {"type": "ExpressionTransform", "expr": self.expr}
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "ExpressionTransform":
+        return ExpressionTransform(json_dict["expr"])

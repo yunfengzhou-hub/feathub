@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Optional, List, TYPE_CHECKING, Dict
+
 from abc import abstractmethod
+from typing import Optional, List, TYPE_CHECKING, Dict
 
 from feathub.common.exceptions import FeathubException
-from feathub.registries.entity import Entity
 from feathub.feature_views.feature import Feature
+from feathub.registries.entity import Entity
 
 if TYPE_CHECKING:
     from feathub.registries.registry import Registry
@@ -129,3 +130,14 @@ class TableDescriptor(Entity):
         Whether the Table is bounded.
         """
         pass
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "TableDescriptor":
+        if "FeatureView" in json_dict["type"]:
+            from feathub.feature_views.feature_view import FeatureView
+
+            return FeatureView.from_json(json_dict)
+        else:
+            from feathub.feature_tables.feature_table import FeatureTable
+
+            return FeatureTable.from_json(json_dict)

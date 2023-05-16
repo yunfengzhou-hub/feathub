@@ -77,3 +77,16 @@ class OverWindowTransform(Transformation):
             "filter_expr": self.filter_expr,
             "limit": self.limit,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "OverWindowTransform":
+        return OverWindowTransform(
+            expr=json_dict["expr"],
+            agg_func=json_dict["agg_func"],
+            group_by_keys=json_dict["group_by_keys"],
+            window_size=timedelta(milliseconds=json_dict["window_size_ms"])
+            if json_dict["window_size_ms"] is not None
+            else None,
+            filter_expr=json_dict["filter_expr"],
+            limit=json_dict["limit"],
+        )

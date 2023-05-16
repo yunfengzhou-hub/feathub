@@ -51,6 +51,16 @@ class Schema:
             "field_types": [field_type.to_json() for field_type in self.field_types],
         }
 
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "Schema":
+        return Schema(
+            field_names=json_dict["field_names"],
+            field_types=[
+                DType.from_json(type_json_dict)
+                for type_json_dict in json_dict["field_types"]
+            ],
+        )
+
     def get_field_type(self, field_name: str) -> DType:
         """
         Get the data type of the given field.

@@ -73,3 +73,15 @@ class KafkaSink(Sink):
             "key_data_format_props": self.key_format_props,
             "value_data_format_props": self.value_format_props,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "KafkaSink":
+        return KafkaSink(
+            bootstrap_server=json_dict["bootstrap_server"],
+            topic=json_dict["topic"],
+            key_format=json_dict["key_format"],
+            value_format=json_dict["value_format"],
+            producer_props=json_dict["producer_props"],
+            key_data_format_props=json_dict["key_data_format_props"],
+            value_data_format_props=json_dict["value_data_format_props"],
+        )

@@ -15,7 +15,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from typing import Optional, Dict
+from typing import Optional, Dict, cast
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
@@ -87,6 +87,7 @@ from feathub.processors.flink.table_builder.tests.test_flink_sql_feature_view im
 )
 from feathub.registries.local_registry import LocalRegistry
 from feathub.table.schema import Schema
+from feathub.tests.feathub_it_test_base import RegistryWithJsonCheck
 from feathub.tests.test_get_features import GetFeaturesITTest
 
 
@@ -444,6 +445,19 @@ class FlinkProcessorITTest(
         self.invoke_base_class_teardown()
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+        for client in self._cached_clients.values():
+            processor = cast(FlinkProcessor, client.processor)
+            t_env = processor.flink_table_builder.t_env
+            for view_name in t_env.list_temporary_views():
+                t_env.drop_temporary_view(view_name)
+
+            processor.flink_table_builder._built_tables = {}
+
+            registry = cast(
+                LocalRegistry, cast(RegistryWithJsonCheck, client.registry).registry
+            )
+            registry.tables = {}
 
     @classmethod
     def tearDownClass(cls) -> None:

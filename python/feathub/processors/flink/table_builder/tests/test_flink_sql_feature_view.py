@@ -11,7 +11,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import typing
 from abc import ABC
 from datetime import timedelta
 
@@ -33,7 +32,6 @@ from feathub.feature_views.sql_feature_view import SqlFeatureView
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.flink.flink_processor import FlinkProcessor
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
@@ -45,14 +43,6 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
         FeathubITTestBase.setUp(self)
         self.source = self.create_file_source(self.input_data.copy())
         self.client.build_features([self.source])
-
-    def tearDown(self) -> None:
-        FeathubITTestBase.tearDown(self)
-        t_env = typing.cast(
-            FlinkProcessor, self.client.processor
-        ).flink_table_builder.t_env
-        for view_name in t_env.list_temporary_views():
-            t_env.drop_temporary_view(view_name)
 
     def test_sql_feature_view(self):
         features = SqlFeatureView(

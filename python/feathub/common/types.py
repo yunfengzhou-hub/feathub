@@ -19,7 +19,11 @@ from typing import Type, Dict
 import numpy as np
 import json
 
-from feathub.common.exceptions import FeathubTypeException, FeathubExpressionException
+from feathub.common.exceptions import (
+    FeathubTypeException,
+    FeathubExpressionException,
+    FeathubException,
+)
 
 
 class BasicDType(Enum):
@@ -43,6 +47,20 @@ class DType(ABC):
     @abstractmethod
     def to_json(self) -> Dict:
         pass
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "DType":
+        if json_dict["type"] == "PrimitiveType":
+            return PrimitiveType(BasicDType[json_dict["basic_dtype"]])
+        elif json_dict["type"] == "VectorType":
+            return VectorType(DType.from_json(json_dict["dtype"]))
+        elif json_dict["type"] == "MapType":
+            return MapType(
+                DType.from_json(json_dict["key_dtype"]),
+                DType.from_json(json_dict["value_dtype"]),
+            )
+
+        raise FeathubException(f"Unsupported DType type {json_dict['type']}.")
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2, sort_keys=True)
