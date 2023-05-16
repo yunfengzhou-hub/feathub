@@ -28,3 +28,7 @@ class BlackHoleSink(Sink):
 
     def to_json(self) -> Dict:
         return {"type": "BlackHoleSink"}
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return BlackHoleSink()

@@ -166,3 +166,34 @@ class KafkaSource(FeatureTable):
             "key_data_format_props": self.key_data_format_props,
             "value_data_format_props": self.value_data_format_props,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return KafkaSource(
+            name=json_dict["name"],
+            bootstrap_server=json_dict["bootstrap_server"],
+            topic=json_dict["topic"],
+            key_format=json_dict["key_format"],
+            value_format=json_dict["value_format"],
+            schema=Schema.from_json(json_dict["name"])
+            if json_dict["name"] is not None
+            else None,
+            consumer_group=json_dict["consumer_group"],
+            keys=json_dict["keys"],
+            timestamp_field=json_dict["timestamp_field"],
+            timestamp_format=json_dict["timestamp_format"],
+            consumer_props=json_dict["consumer_props"],
+            max_out_of_orderness=timedelta(
+                milliseconds=json_dict["max_out_of_orderness_ms"]
+            ),
+            startup_mode=json_dict["startup_mode"],
+            startup_datetime=timedelta(milliseconds=json_dict["startup_datetime_ms"])
+            if json_dict["startup_datetime_ms"] is not None
+            else None,
+            partition_discovery_interval=timedelta(
+                milliseconds=json_dict["partition_discovery_interval_ms"]
+            ),
+            is_bounded=json_dict["is_bounded"],
+            key_data_format_props=json_dict["key_data_format_props"],
+            value_data_format_props=json_dict["value_data_format_props"],
+        )

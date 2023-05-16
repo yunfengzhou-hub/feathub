@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import time
+import unittest
 from abc import ABC
 from datetime import timedelta
 from enum import Enum
@@ -34,8 +35,32 @@ from feathub.feature_views.transforms.python_udf_transform import PythonUdfTrans
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
+from feathub.feature_views.transforms.transformation import Transformation
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
+
+
+class SlidingWindowTransformTest(unittest.TestCase):
+    def test_to_from_json(self):
+        transforms = [
+            SlidingWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+                step_size=timedelta(days=1),
+                filter_expr="action='pay'",
+                limit=3,
+            ),
+            SlidingWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                window_size=timedelta(days=2),
+                step_size=timedelta(days=1),
+            ),
+        ]
+        for transform in transforms:
+            self.assertEqual(transform, Transformation.from_json(transform.to_json()))
 
 
 class SlidingWindowTestConfig(Enum):

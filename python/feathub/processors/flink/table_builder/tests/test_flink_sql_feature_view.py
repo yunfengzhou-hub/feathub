@@ -56,7 +56,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
 
     def test_sql_feature_view(self):
         features = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT name, cost FROM {self.source.name};
             """,
@@ -92,7 +92,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
 
     def test_usage_with_keys(self):
         features = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT name, cost FROM {self.source.name};
             """,
@@ -137,7 +137,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
 
     def test_usage_with_udf(self):
         features = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT *, UPPER(name) as upper_name FROM {self.source.name};
             """,
@@ -176,7 +176,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
 
     def test_usage_followed_by_sliding_feature_view(self):
         features: FeatureView = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT name, cost, `time` FROM {self.source.name};
             """,
@@ -248,7 +248,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
         )
 
         features = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT name, cost FROM {self.source.name};
             """,
@@ -300,7 +300,7 @@ class FlinkSqlFeatureViewITTest(ABC, FeathubITTestBase):
         self.client.build_features([source])
 
         features = SqlFeatureView(
-            name="test_view_name",
+            name=self.generate_random_name("test_view_name"),
             sql_statement=f"""
                 SELECT * FROM {source.name};
             """,

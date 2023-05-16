@@ -11,6 +11,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import unittest
 from abc import ABC
 from datetime import timedelta
 from math import sqrt
@@ -22,8 +23,29 @@ from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.over_window_transform import OverWindowTransform
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
+from feathub.feature_views.transforms.transformation import Transformation
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
+
+
+class OverWindowTransformTest(unittest.TestCase):
+    def test_to_from_json(self):
+        transforms = [
+            OverWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+                group_by_keys=["name"],
+                window_size=timedelta(days=2),
+                filter_expr="action='pay'",
+                limit=3,
+            ),
+            OverWindowTransform(
+                expr="cost",
+                agg_func="SUM",
+            ),
+        ]
+        for transform in transforms:
+            self.assertEqual(transform, Transformation.from_json(transform.to_json()))
 
 
 class OverWindowTransformITTest(ABC, FeathubITTestBase):

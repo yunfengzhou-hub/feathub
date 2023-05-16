@@ -125,3 +125,46 @@ class FeatureTable(TableDescriptor, ABC):
         raise FeathubException(
             f"{type(self)} is unbounded and it doesn't support getting bounded view."
         )
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        if "Sink" in json_dict["type"]:
+            from feathub.feature_tables.sinks.sink import (
+                Sink,
+            )
+
+            return Sink.from_json(json_dict)
+        elif json_dict["type"] == "RedisSource":
+            from feathub.feature_tables.sources.redis_source import RedisSource
+
+            return RedisSource.from_json(json_dict)
+        elif json_dict["type"] == "MemoryStoreSource":
+            from feathub.feature_tables.sources.memory_store_source import (
+                MemoryStoreSource,
+            )
+
+            return MemoryStoreSource.from_json(json_dict)
+        elif json_dict["type"] == "KafkaSource":
+            from feathub.feature_tables.sources.kafka_source import KafkaSource
+
+            return KafkaSource.from_json(json_dict)
+        elif json_dict["type"] == "FileSystemSource":
+            from feathub.feature_tables.sources.file_system_source import (
+                FileSystemSource,
+            )
+
+            return FileSystemSource.from_json(json_dict)
+        elif json_dict["type"] == "DataGenSource":
+            from feathub.feature_tables.sources.datagen_source import DataGenSource
+
+            return DataGenSource.from_json(json_dict)
+        elif json_dict["type"] == "MySQLSource":
+            from feathub.feature_tables.sources.mysql_source import MySQLSource
+
+            return MySQLSource.from_json(json_dict)
+        elif json_dict["type"] == "HiveSource":
+            from feathub.feature_tables.sources.hive_source import HiveSource
+
+            return HiveSource.from_json(json_dict)
+
+        raise FeathubException(f"Unsupported FeatureTable type {json_dict['type']}.")

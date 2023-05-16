@@ -11,8 +11,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import unittest
 from abc import ABC
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import pandas as pd
 from pandas._testing import assert_frame_equal
@@ -21,7 +22,37 @@ from feathub.common.types import String, MapType, VectorType
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
+from feathub.feature_views.transforms.transformation import Transformation
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
+
+
+class PythonUDFTransformTest(unittest.TestCase):
+    def test_to_from_json(self):
+        def upper_case_except_alex(name: Any) -> str:
+            if name.lower() == "alex":
+                return name
+            return name.upper()
+
+        transforms = [
+            PythonUdfTransform(
+                upper_case_except_alex,
+                fail_on_exception=False,
+                value_on_exception="Bad Name",
+            ),
+            PythonUdfTransform(
+                upper_case_except_alex,
+            ),
+        ]
+        for transform in transforms:
+            loaded_transfrom = Transformation.from_json(transform.to_json())
+            self.assertEqual(
+                transform.fail_on_exception, loaded_transfrom.fail_on_exception
+            )
+            self.assertEqual(
+                transform.value_on_exception, loaded_transfrom.value_on_exception
+            )
+            self.assertEqual(loaded_transfrom.udf("Alex"), "Alex")
+            self.assertEqual(loaded_transfrom.udf("Emma"), "EMMA")
 
 
 class PythonUDFTransformITTest(ABC, FeathubITTestBase):

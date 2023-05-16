@@ -29,7 +29,9 @@ from feathub.feature_tables.format_config import DataFormat
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.registries.local_registry import LocalRegistry
+from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
+from feathub.table.table_descriptor import TableDescriptor
 
 
 def _merge_nested_dict(a, b) -> None:
@@ -45,6 +47,31 @@ def _merge_nested_dict(a, b) -> None:
             raise FeathubException(
                 f"Mismatch value {a[key]} and {b[key]} found for key {key}"
             )
+
+
+# A wrapper class that verifies the to/from json methods for every saved table descriptor.
+class WrappedRegistry(Registry):
+    def __init__(self, registry: Registry):
+        super().__init__("", {})
+        self.registry = registry
+
+    def build_features(
+        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+    ) -> List[TableDescriptor]:
+        features_list = [TableDescriptor.from_json(x.to_json()) for x in features_list]
+        return self.registry.build_features(features_list, props)
+
+    def register_features(
+        self, features: TableDescriptor, override: bool = True
+    ) -> bool:
+        features = TableDescriptor.from_json(features.to_json())
+        return self.registry.register_features(features, override)
+
+    def get_features(self, name: str) -> TableDescriptor:
+        return self.registry.get_features(name)
+
+    def delete_features(self, name: str) -> bool:
+        return self.delete_features(name)
 
 
 class FeathubITTestBase(unittest.TestCase):
@@ -109,7 +136,9 @@ class FeathubITTestBase(unittest.TestCase):
         if extra_config is not None:
             _merge_nested_dict(props, extra_config)
 
-        return FeathubClient(props)
+        client = FeathubClient(props)
+        client.registry = WrappedRegistry(client.registry)
+        return client
 
     def create_file_source(
         self,

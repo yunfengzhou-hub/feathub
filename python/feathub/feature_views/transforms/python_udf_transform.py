@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import marshal
+import pickle
+import types
 from typing import Callable, Any, Dict
 import pandas as pd
 
@@ -70,6 +72,27 @@ class PythonUdfTransform(Transformation):
     def to_json(self) -> Dict:
         return {
             "type": "PythonUdfTransform",
+            "udf": marshal.dumps(self.original_udf.__code__),
             "fail_on_exception": self.fail_on_exception,
             "value_on_exception": self.value_on_exception,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        code = marshal.loads(json_dict["udf"])
+        return PythonUdfTransform(
+            udf=types.FunctionType(code, globals(), "some_func_name"),
+            fail_on_exception=json_dict["fail_on_exception"],
+            value_on_exception=json_dict["value_on_exception"],
+        )
+
+    # def __hash__(self) -> int:
+    #     return hash((marshal.dumps(self.original_udf.__code__), self.fail_on_exception, self.value_on_exception))
+    #
+    # def __eq__(self, other: object) -> bool:
+    #     return (
+    #         isinstance(other, PythonUdfTransform)
+    #         and marshal.dumps(self.original_udf.__code__) == marshal.dumps(other.original_udf.__code__)
+    #         and self.fail_on_exception == other.fail_on_exception
+    #         and self.value_on_exception == other.value_on_exception
+    #     )

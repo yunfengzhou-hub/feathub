@@ -26,3 +26,7 @@ class PrintSink(Sink):
 
     def to_json(self) -> Dict:
         return {"type": "PrintSink"}
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return PrintSink()

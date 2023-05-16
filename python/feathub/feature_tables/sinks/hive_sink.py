@@ -62,9 +62,17 @@ class HiveSink(Sink):
     def to_json(self) -> Dict:
         return {
             "type": "HiveSink",
-            "name": self.name,
             "database": self.database,
             "table": self.table,
             "hive_catalog_conf_dir": self.hive_catalog_conf_dir,
             "processor_specific_props": self.processor_specific_props,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return HiveSink(
+            database=json_dict["database"],
+            table=json_dict["table"],
+            hive_catalog_conf_dir=json_dict["hive_catalog_conf_dir"],
+            processor_specific_props=json_dict["processor_specific_props"],
+        )

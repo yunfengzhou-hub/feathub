@@ -151,6 +151,18 @@ class OnDemandFeatureView(FeatureView):
                 feature if isinstance(feature, str) else feature.to_json()
                 for feature in self.features
             ],
-            "request_schema": self.request_schema,
+            "request_schema": self.request_schema.to_json(),
             "keep_source_fields": self.keep_source_fields,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return OnDemandFeatureView(
+            name=json_dict["name"],
+            features=[
+                feature if isinstance(feature, str) else Feature.from_json(feature)
+                for feature in json_dict["features"]
+            ],
+            request_schema=Schema.from_json(json_dict["request_schema"]),
+            keep_source_fields=json_dict["keep_source_fields"],
+        )

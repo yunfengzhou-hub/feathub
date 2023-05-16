@@ -110,3 +110,19 @@ class RedisSource(FeatureTable):
             "namespace": self.namespace,
             "timestamp_field": self.timestamp_field,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict):
+        return RedisSource(
+            name=json_dict["name"],
+            schema=Schema.from_json(json_dict["schema"]),
+            keys=json_dict["keys"],
+            host=json_dict["host"],
+            port=json_dict["port"],
+            mode=json_dict["mode"],
+            username=json_dict["username"],
+            password=json_dict["password"],
+            db_num=json_dict["db_num"],
+            namespace=json_dict["namespace"],
+            timestamp_field=json_dict["timestamp_field"],
+        )
