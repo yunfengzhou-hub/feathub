@@ -26,10 +26,10 @@ from feathub.table.table_descriptor import TableDescriptor
 MYSQL_REGISTRY_PREFIX = REGISTRY_PREFIX + "mysql."
 
 DATABASE_CONFIG = MYSQL_REGISTRY_PREFIX + "database"
-DATABASE_DOC = "MySQL database name."
+DATABASE_DOC = "The name of the MySQL database to hold the Feathub registry."
 
 TABLE_CONFIG = MYSQL_REGISTRY_PREFIX + "table"
-TABLE_DOC = "MySQL table name."
+TABLE_DOC = "The name of the MySQL table to hold the Feathub registry."
 
 HOST_CONFIG = MYSQL_REGISTRY_PREFIX + "host"
 HOST_DOC = "IP address or hostname of the MySQL server."
@@ -118,19 +118,19 @@ class MySqlRegistry(Registry):
             password=self.password,
             database=self.database,
         )
+        self.cursor = self.conn.cursor()
 
-        self._execute_sql(
+        self.cursor.execute(
             f"""
-            CREATE TABLE IF NOT EXISTS `{self.table}`(
-               `digest` VARCHAR(300) NOT NULL,
-               `name` VARCHAR(300) NOT NULL,
-               `timestamp` TIMESTAMP NOT NULL,
-               `is_deleted` BOOLEAN,
-               `json_representation` VARCHAR(10000),
-               PRIMARY KEY ( `digest`, `timestamp` )
-            );
-        """,
-            False,
+                CREATE TABLE IF NOT EXISTS `{self.table}`(
+                   `digest` VARCHAR(64) NOT NULL,
+                   `name` TEXT NOT NULL,
+                   `timestamp` TIMESTAMP NOT NULL,
+                   `is_deleted` BOOLEAN NOT NULL,
+                   `json_representation` TEXT,
+                   PRIMARY KEY ( `digest`, `timestamp` )
+                );
+            """
         )
 
     def build_features(
@@ -167,7 +167,8 @@ class MySqlRegistry(Registry):
 
         json_dict = features.to_json()
         json_dict_str = json.dumps(json_dict, sort_keys=True).replace('"', '\\"')
-        sql_statement = f"""
+        self.cursor.execute(
+            f"""
                 INSERT INTO {self.table} (
                    `digest`,
                    `name`,
@@ -182,22 +183,23 @@ class MySqlRegistry(Registry):
                     "{json_dict_str}"
                 );
             """
-        self._execute_sql(
-            sql_statement,
-            False,
         )
         return True
 
     def get_features(self, name: str) -> TableDescriptor:
-        results = self._execute_sql(
+        self.cursor.execute(
             f"""
-            SELECT `digest`, `json_representation`, `is_deleted` FROM {self.table}
-            WHERE `name` = "{name}"
-            ORDER BY `timestamp` DESC
-            LIMIT 1;
-        """,
-            True,
+                SELECT
+                    `digest`,
+                    `json_representation`,
+                    `is_deleted`
+                FROM {self.table}
+                WHERE `name` = "{name}"
+                ORDER BY `timestamp` DESC
+                LIMIT 1;
+            """
         )
+        results: List[Tuple] = self.cursor.fetchall()
         feature_exists = results[0][2] == 0 if len(results) > 0 else False
         if not feature_exists:
             raise RuntimeError(
@@ -215,25 +217,17 @@ class MySqlRegistry(Registry):
         return TableDescriptor.from_json(json_dict)
 
     def delete_features(self, name: str) -> bool:
-        self._execute_sql(
+        self.cursor.execute(
             f"""
-            UPDATE {self.table} SET `is_deleted`=True
-            WHERE `name` = "{name}"
-            ORDER BY `timestamp` DESC
-            LIMIT 1;
-        """,
-            False,
+                UPDATE {self.table}
+                SET `is_deleted`=True
+                WHERE `name` = "{name}"
+                ORDER BY `timestamp` DESC
+                LIMIT 1;
+            """
         )
         return True
 
-    def _execute_sql(self, sql_statement: str, is_query: bool) -> Optional[List[Tuple]]:
-        cursor = None
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql_statement)
-            if is_query:
-                return cursor.fetchall()
-        finally:
-            if cursor is not None:
-                cursor.close()
-        return None
+    def __del__(self) -> None:
+        self.cursor.close()
+        self.conn.close()

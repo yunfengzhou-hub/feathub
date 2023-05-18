@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any
 
 from testcontainers.mysql import MySqlContainer
 
@@ -70,9 +71,8 @@ class MySqlRegistryTest(RegistryTestBase):
 
     def tearDown(self) -> None:
         super().tearDown()
-        cursor = self.client.registry.conn.cursor()
-        cursor.execute("DELETE FROM feathub_registry_features;")
-        cursor.close()
+        registry: Any = self.client.registry
+        registry.cursor.execute("DELETE FROM feathub_registry_features;")
 
     def _get_client(self) -> FeathubClient:
         return self.client
