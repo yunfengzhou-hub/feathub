@@ -57,7 +57,7 @@ class RandomField:
             "type": "random",
             "minimum": self.minimum,
             "maximum": self.maximum,
-            "max_past": self.max_past,
+            "max_past_ms": self.max_past / timedelta(milliseconds=1),
             "length": self.length,
         }
 
@@ -84,7 +84,7 @@ def _get_field_from_json(json_dict: Dict) -> Union[RandomField, SequenceField]:
         return RandomField(
             minimum=json_dict["minimum"],
             maximum=json_dict["maximum"],
-            max_past=json_dict["max_past"],
+            max_past=timedelta(milliseconds=json_dict["max_past_ms"]),
             length=json_dict["length"],
         )
     elif json_dict["type"] == "sequence":

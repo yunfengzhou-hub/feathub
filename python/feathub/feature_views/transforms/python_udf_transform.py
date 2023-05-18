@@ -72,16 +72,17 @@ class PythonUdfTransform(Transformation):
     def to_json(self) -> Dict:
         return {
             "type": "PythonUdfTransform",
-            "udf": marshal.dumps(self.original_udf.__code__),
+            "udf": str(marshal.dumps(self.original_udf.__code__)),
             "fail_on_exception": self.fail_on_exception,
             "value_on_exception": self.value_on_exception,
         }
 
     @classmethod
     def from_json(cls, json_dict: Dict) -> "PythonUdfTransform":
-        code = marshal.loads(json_dict["udf"])
         return PythonUdfTransform(
-            udf=types.FunctionType(code, globals(), "some_func_name"),
+            udf=types.FunctionType(
+                marshal.loads(bytes(json_dict["udf"])), globals(), "some_func_name"
+            ),
             fail_on_exception=json_dict["fail_on_exception"],
             value_on_exception=json_dict["value_on_exception"],
         )

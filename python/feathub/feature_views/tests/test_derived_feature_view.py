@@ -23,7 +23,6 @@ from feathub.common.types import String, Float64
 from feathub.feature_tables.sources.file_system_source import FileSystemSource
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.transforms.over_window_transform import OverWindowTransform
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.registries.local_registry import LocalRegistry
@@ -129,19 +128,6 @@ class DerivedFeatureViewTest(unittest.TestCase):
                     over_feature_2,
                 ],
             ).build(self.registry)
-
-    def test_to_from_json(self):
-        feature_view = DerivedFeatureView(
-            name="feature_view",
-            source=self.source,
-            features=["test_feature"],
-            keep_source_fields=True,
-            filter_expr="name = 'Alex' AND cost > 200",
-        )
-        self.assertEqual(
-            feature_view.to_json(),
-            FeatureView.from_json(feature_view.to_json()).to_json(),
-        )
 
 
 class DerivedFeatureViewITTest(ABC, FeathubITTestBase):

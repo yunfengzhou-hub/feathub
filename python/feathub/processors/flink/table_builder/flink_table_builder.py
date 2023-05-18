@@ -211,33 +211,33 @@ class FlinkTableBuilder:
         if isinstance(features, pd.DataFrame):
             return self.t_env.from_pandas(features)
 
-        if features.name in self._built_tables:
-            if features != self._built_tables[features.name][0]:
+        if features.digest in self._built_tables:
+            if features != self._built_tables[features.digest][0]:
                 raise FeathubException(
                     f"Encounter different TableDescriptor with same name. {features} "
-                    f"and {self._built_tables[features.name][0]}."
+                    f"and {self._built_tables[features.digest][0]}."
                 )
-            return self._built_tables[features.name][1]
+            return self._built_tables[features.digest][1]
 
-        self._tables_being_built.add(features.name)
+        self._tables_being_built.add(features.digest)
 
         if isinstance(features, FeatureTable):
-            self._built_tables[features.name] = (
+            self._built_tables[features.digest] = (
                 features,
                 get_table_from_source(self.t_env, features),
             )
         elif isinstance(features, DerivedFeatureView):
-            self._built_tables[features.name] = (
+            self._built_tables[features.digest] = (
                 features,
                 self._get_table_from_derived_feature_view(features),
             )
         elif isinstance(features, SlidingFeatureView):
-            self._built_tables[features.name] = (
+            self._built_tables[features.digest] = (
                 features,
                 self._get_table_from_sliding_feature_view(features),
             )
         elif isinstance(features, SqlFeatureView):
-            self._built_tables[features.name] = (
+            self._built_tables[features.digest] = (
                 features,
                 self._get_table_from_sql_feature_view(features),
             )
@@ -246,9 +246,9 @@ class FlinkTableBuilder:
                 f"Unsupported type '{type(features).__name__}' for '{features}'."
             )
 
-        self._tables_being_built.remove(features.name)
+        self._tables_being_built.remove(features.digest)
 
-        return self._built_tables[features.name][1]
+        return self._built_tables[features.digest][1]
 
     def _get_table_from_derived_feature_view(
         self, feature_view: DerivedFeatureView
@@ -591,15 +591,13 @@ class FlinkTableBuilder:
     def _get_table_from_sql_feature_view(
         self, feature_view: SqlFeatureView
     ) -> NativeFlinkTable:
-        for table_name in self._get_all_registered_table_names():
+        for table in self._get_all_registered_tables():
             if (
-                table_name in self.t_env.list_temporary_views()
-                or table_name in self._tables_being_built
+                table.name in self.t_env.list_temporary_views()
+                or table.digest in self._tables_being_built
             ):
                 continue
-            self.t_env.create_temporary_view(
-                table_name, self._get_table(self.registry.get_features(table_name))
-            )
+            self.t_env.create_temporary_view(table.name, self._get_table(table))
 
         result_table = self.t_env.sql_query(feature_view.sql_statement)
 
@@ -623,9 +621,9 @@ class FlinkTableBuilder:
 
         return result_table
 
-    def _get_all_registered_table_names(self) -> Set[str]:
+    def _get_all_registered_tables(self) -> Sequence[TableDescriptor]:
         if isinstance(self.registry, LocalRegistry):
-            return set(x for x in cast(LocalRegistry, self.registry).tables.keys())
+            return list(x for x in cast(LocalRegistry, self.registry).tables.values())
 
         raise FeathubException(f"Unsupported Registry type {type(self.registry)}.")
 
