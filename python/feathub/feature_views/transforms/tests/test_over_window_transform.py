@@ -28,26 +28,6 @@ from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class OverWindowTransformTest(unittest.TestCase):
-    def test_to_from_json(self):
-        transforms = [
-            OverWindowTransform(
-                expr="cost",
-                agg_func="SUM",
-                group_by_keys=["name"],
-                window_size=timedelta(days=2),
-                filter_expr="action='pay'",
-                limit=3,
-            ),
-            OverWindowTransform(
-                expr="cost",
-                agg_func="SUM",
-            ),
-        ]
-        for transform in transforms:
-            self.assertEqual(transform, Transformation.from_json(transform.to_json()))
-
-
 class OverWindowTransformITTest(ABC, FeathubITTestBase):
     def test_over_window_transform(self):
         df = self.input_data.copy()

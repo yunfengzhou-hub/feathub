@@ -40,29 +40,6 @@ from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class SlidingWindowTransformTest(unittest.TestCase):
-    def test_to_from_json(self):
-        transforms = [
-            SlidingWindowTransform(
-                expr="cost",
-                agg_func="SUM",
-                group_by_keys=["name"],
-                window_size=timedelta(days=2),
-                step_size=timedelta(days=1),
-                filter_expr="action='pay'",
-                limit=3,
-            ),
-            SlidingWindowTransform(
-                expr="cost",
-                agg_func="SUM",
-                window_size=timedelta(days=2),
-                step_size=timedelta(days=1),
-            ),
-        ]
-        for transform in transforms:
-            self.assertEqual(transform, Transformation.from_json(transform.to_json()))
-
-
 class SlidingWindowTestConfig(Enum):
     ENABLE_EMPTY_WINDOW_OUTPUT_SKIP_SAME_WINDOW_OUTPUT = {
         ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG: True,

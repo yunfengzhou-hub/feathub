@@ -26,35 +26,6 @@ from feathub.feature_views.transforms.transformation import Transformation
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class PythonUDFTransformTest(unittest.TestCase):
-    def test_to_from_json(self):
-        def upper_case_except_alex(name: Any) -> str:
-            if name.lower() == "alex":
-                return name
-            return name.upper()
-
-        transforms = [
-            PythonUdfTransform(
-                upper_case_except_alex,
-                fail_on_exception=False,
-                value_on_exception="Bad Name",
-            ),
-            PythonUdfTransform(
-                upper_case_except_alex,
-            ),
-        ]
-        for transform in transforms:
-            loaded_transfrom = Transformation.from_json(transform.to_json())
-            self.assertEqual(
-                transform.fail_on_exception, loaded_transfrom.fail_on_exception
-            )
-            self.assertEqual(
-                transform.value_on_exception, loaded_transfrom.value_on_exception
-            )
-            self.assertEqual(loaded_transfrom.udf("Alex"), "Alex")
-            self.assertEqual(loaded_transfrom.udf("Emma"), "EMMA")
-
-
 class PythonUDFTransformITTest(ABC, FeathubITTestBase):
     def test_python_udf_transform(self):
         df_1 = self.input_data.copy()

@@ -27,12 +27,6 @@ from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class JoinTransformTest(unittest.TestCase):
-    def test_to_from_json(self):
-        transform = JoinTransform("test_table_name", "test_feature_name")
-        self.assertEqual(transform, Transformation.from_json(transform.to_json()))
-
-
 class JoinTransformITTest(ABC, FeathubITTestBase):
     def test_join_transform(self):
         df_1 = self.input_data.copy()

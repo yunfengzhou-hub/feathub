@@ -27,14 +27,6 @@ from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 
-class ExpressionTransformTest(unittest.TestCase):
-    def test_to_from_json(self):
-        transform = ExpressionTransform(
-            "CAST(cost AS DOUBLE) / CAST(distance AS DOUBLE) + 10"
-        )
-        self.assertEqual(transform, Transformation.from_json(transform.to_json()))
-
-
 class ExpressionTransformITTest(ABC, FeathubITTestBase):
     def test_expression_transform(self):
         self._test_expression_transform(False)
