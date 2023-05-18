@@ -101,7 +101,7 @@ class Feature:
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "Feature":
         return Feature(
             name=json_dict["name"],
             dtype=DType.from_json(json_dict["dtype"])

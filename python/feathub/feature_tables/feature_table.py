@@ -127,7 +127,7 @@ class FeatureTable(TableDescriptor, ABC):
         )
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "FeatureTable":
         if "Sink" in json_dict["type"]:
             from feathub.feature_tables.sinks.sink import (
                 Sink,

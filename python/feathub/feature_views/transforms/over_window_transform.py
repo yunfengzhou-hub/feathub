@@ -79,7 +79,7 @@ class OverWindowTransform(Transformation):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "OverWindowTransform":
         return OverWindowTransform(
             expr=json_dict["expr"],
             agg_func=json_dict["agg_func"],
@@ -89,27 +89,4 @@ class OverWindowTransform(Transformation):
             else None,
             filter_expr=json_dict["filter_expr"],
             limit=json_dict["limit"],
-        )
-
-    def __hash__(self) -> int:
-        return hash(
-            (
-                self.expr,
-                self.agg_func,
-                self.group_by_keys,
-                self.window_size,
-                self.filter_expr,
-                self.limit,
-            )
-        )
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, OverWindowTransform)
-            and self.expr == other.expr
-            and self.agg_func == other.agg_func
-            and self.group_by_keys == other.group_by_keys
-            and self.window_size == other.window_size
-            and self.filter_expr == other.filter_expr
-            and self.limit == other.limit
         )

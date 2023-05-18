@@ -74,7 +74,7 @@ class MySQLSink(Sink):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "MySQLSink":
         return MySQLSink(
             database=json_dict["database"],
             table=json_dict["table"],

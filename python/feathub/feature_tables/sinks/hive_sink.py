@@ -69,7 +69,7 @@ class HiveSink(Sink):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "HiveSink":
         return HiveSink(
             database=json_dict["database"],
             table=json_dict["table"],

@@ -75,7 +75,7 @@ class KafkaSink(Sink):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "KafkaSink":
         return KafkaSink(
             bootstrap_server=json_dict["bootstrap_server"],
             topic=json_dict["topic"],

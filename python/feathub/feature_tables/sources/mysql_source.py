@@ -102,7 +102,7 @@ class MySQLSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "MySQLSource":
         return MySQLSource(
             name=json_dict["name"],
             database=json_dict["database"],

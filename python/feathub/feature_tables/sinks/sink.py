@@ -62,7 +62,7 @@ class Sink(FeatureTable, ABC):
         raise FeathubException(f"Cannot get bounded feature table on {type(self)}.")
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "Sink":
         if json_dict["type"] == "BlackHoleSink":
             from feathub.feature_tables.sinks.black_hole_sink import (
                 BlackHoleSink,

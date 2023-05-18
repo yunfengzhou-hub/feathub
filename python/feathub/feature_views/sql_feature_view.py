@@ -144,7 +144,7 @@ class SqlFeatureView(FeatureView):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "SqlFeatureView":
         return SqlFeatureView(
             name=json_dict["name"],
             sql_statement=json_dict["sql_statement"],

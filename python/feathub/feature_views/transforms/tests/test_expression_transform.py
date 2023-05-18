@@ -11,7 +11,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import unittest
 from abc import ABC
 
 import pandas as pd
@@ -21,8 +20,6 @@ from feathub.common.types import Float64, String, Int64
 from feathub.common.utils import to_unix_timestamp
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
-from feathub.feature_views.transforms.expression_transform import ExpressionTransform
-from feathub.feature_views.transforms.transformation import Transformation
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 

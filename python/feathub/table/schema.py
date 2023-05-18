@@ -52,7 +52,7 @@ class Schema:
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "Schema":
         return Schema(
             field_names=json_dict["field_names"],
             field_types=[

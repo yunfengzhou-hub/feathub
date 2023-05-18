@@ -42,18 +42,8 @@ class JoinTransform(Transformation):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "JoinTransform":
         return JoinTransform(
             table_name=json_dict["table_name"],
             feature_name=json_dict["feature_name"],
-        )
-
-    def __hash__(self) -> int:
-        return hash((self.table_name, self.feature_name))
-
-    def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, JoinTransform)
-            and self.table_name == other.table_name
-            and self.feature_name == other.feature_name
         )

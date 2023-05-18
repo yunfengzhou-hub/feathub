@@ -87,7 +87,7 @@ class FileSystemSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "FileSystemSource":
         return FileSystemSource(
             name=json_dict["name"],
             path=json_dict["path"],

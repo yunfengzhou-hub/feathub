@@ -13,13 +13,12 @@
 # limitations under the License.
 import json
 from hashlib import sha256
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import mysql.connector
 
 from feathub.common.config import ConfigDef
 from feathub.common.exceptions import FeathubException
-from feathub.feature_views.feature_view import FeatureView
 from feathub.registries.registry import Registry
 from feathub.registries.registry_config import REGISTRY_PREFIX, RegistryConfig
 from feathub.table.table_descriptor import TableDescriptor
@@ -45,7 +44,7 @@ PASSWORD_CONFIG = MYSQL_REGISTRY_PREFIX + "password"
 PASSWORD_DOC = "The password of the user."
 
 
-mysql_registry_config_defs = [
+mysql_registry_config_defs: List[ConfigDef] = [
     ConfigDef(
         name=DATABASE_CONFIG,
         value_type=str,
@@ -91,7 +90,7 @@ class MySqlRegistryConfig(RegistryConfig):
         self.update_config_values(mysql_registry_config_defs)
 
 
-def _get_digest(json_dict: Dict):
+def _get_digest(json_dict: Dict) -> str:
     return sha256(json.dumps(json_dict, sort_keys=True).encode("utf8")).hexdigest()
 
 
@@ -126,7 +125,6 @@ class MySqlRegistry(Registry):
                `digest` VARCHAR(300) NOT NULL,
                `name` VARCHAR(300) NOT NULL,
                `timestamp` TIMESTAMP NOT NULL,
-               `is_unresolved` BOOLEAN,
                `is_deleted` BOOLEAN,
                `json_representation` VARCHAR(10000),
                PRIMARY KEY ( `digest`, `timestamp` )
@@ -168,22 +166,20 @@ class MySqlRegistry(Registry):
                 raise e
 
         json_dict = features.to_json()
-        backslash = "\\"
+        json_dict_str = json.dumps(json_dict, sort_keys=True).replace('"', '\\"')
         sql_statement = f"""
                 INSERT INTO {self.table} (
                    `digest`,
                    `name`,
                    `timestamp`,
-                   `is_unresolved`,
                    `is_deleted`,
                    `json_representation`
                 ) VALUES (
                     "{_get_digest(json_dict)}",
                     "{features.name}",
                     NOW(),
-                    {features.is_unresolved() if isinstance(features, FeatureView) else False},
                     False,
-                    "{json.dumps(json_dict, sort_keys=True).replace('"', backslash + '"')}"
+                    "{json_dict_str}"
                 );
             """
         self._execute_sql(
@@ -213,7 +209,8 @@ class MySqlRegistry(Registry):
         if _get_digest(json_dict) != digest:
             raise FeathubException(
                 f"Acquired features's json representation cannot match the digest. "
-                f"Data might be broken. Json representation: {json_representation}, digest: {digest}"
+                f"Data might be broken. Json representation: {json_representation}, "
+                f"digest: {digest}"
             )
         return TableDescriptor.from_json(json_dict)
 
@@ -229,7 +226,7 @@ class MySqlRegistry(Registry):
         )
         return True
 
-    def _execute_sql(self, sql_statement: str, is_query: bool):
+    def _execute_sql(self, sql_statement: str, is_query: bool) -> Optional[List[Tuple]]:
         cursor = None
         try:
             cursor = self.conn.cursor()
@@ -239,3 +236,4 @@ class MySqlRegistry(Registry):
         finally:
             if cursor is not None:
                 cursor.close()
+        return None

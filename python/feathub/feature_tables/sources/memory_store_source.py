@@ -66,7 +66,7 @@ class MemoryStoreSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "MemoryStoreSource":
         return MemoryStoreSource(
             name=json_dict["name"],
             keys=json_dict["keys"],

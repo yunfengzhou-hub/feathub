@@ -33,11 +33,5 @@ class ExpressionTransform(Transformation):
         return {"type": "ExpressionTransform", "expr": self.expr}
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "ExpressionTransform":
         return ExpressionTransform(json_dict["expr"])
-
-    def __hash__(self) -> int:
-        return hash(self.expr)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, ExpressionTransform) and self.expr == other.expr

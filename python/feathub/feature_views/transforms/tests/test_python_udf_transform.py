@@ -11,9 +11,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import unittest
 from abc import ABC
-from typing import Dict, List, Any
+from typing import Dict, List
 
 import pandas as pd
 from pandas._testing import assert_frame_equal
@@ -22,7 +21,6 @@ from feathub.common.types import String, MapType, VectorType
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
-from feathub.feature_views.transforms.transformation import Transformation
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
 

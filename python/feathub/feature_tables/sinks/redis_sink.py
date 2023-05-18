@@ -78,7 +78,7 @@ class RedisSink(Sink):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "RedisSink":
         return RedisSink(
             namespace=json_dict["namespace"],
             host=json_dict["host"],

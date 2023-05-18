@@ -112,7 +112,7 @@ class RedisSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "RedisSource":
         return RedisSource(
             name=json_dict["name"],
             schema=Schema.from_json(json_dict["schema"]),

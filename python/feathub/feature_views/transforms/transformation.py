@@ -36,7 +36,7 @@ class Transformation(ABC):
         pass
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "Transformation":
         if json_dict["type"] == "ExpressionTransform":
             from feathub.feature_views.transforms.expression_transform import (
                 ExpressionTransform,

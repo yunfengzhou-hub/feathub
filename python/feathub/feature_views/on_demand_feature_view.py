@@ -156,7 +156,7 @@ class OnDemandFeatureView(FeatureView):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "OnDemandFeatureView":
         return OnDemandFeatureView(
             name=json_dict["name"],
             features=[

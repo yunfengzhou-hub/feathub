@@ -79,7 +79,7 @@ class SequenceField:
         return {"type": "sequence", "start": self.start, "end": self.end}
 
 
-def _from_json(json_dict: Dict):
+def _get_field_from_json(json_dict: Dict) -> Union[RandomField, SequenceField]:
     if json_dict["type"] == "random":
         return RandomField(
             minimum=json_dict["minimum"],
@@ -213,7 +213,7 @@ class DataGenSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "DataGenSource":
         return DataGenSource(
             name=json_dict["name"],
             schema=Schema.from_json(json_dict["schema"])
@@ -221,7 +221,10 @@ class DataGenSource(FeatureTable):
             else None,
             rows_per_second=json_dict["rows_per_second"],
             number_of_rows=json_dict["number_of_rows"],
-            field_configs={k: _from_json(v) for k, v in json_dict["field_configs"].items()},
+            field_configs={
+                k: _get_field_from_json(v)
+                for k, v in json_dict["field_configs"].items()
+            },
             keys=json_dict["keys"],
             timestamp_field=json_dict["timestamp_field"],
             timestamp_format=json_dict["timestamp_format"],

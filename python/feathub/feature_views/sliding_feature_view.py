@@ -265,7 +265,7 @@ class SlidingFeatureView(FeatureView):
         return feature_view
 
     def to_json(self) -> Dict:
-        features = []
+        features: List[Union[str, Dict]] = []
         for feature in self.features:
             if isinstance(feature, str):
                 features.append(feature)
@@ -285,7 +285,7 @@ class SlidingFeatureView(FeatureView):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "SlidingFeatureView":
         return SlidingFeatureView(
             name=json_dict["name"],
             source=json_dict["source"]

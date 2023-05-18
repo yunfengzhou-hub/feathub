@@ -30,5 +30,5 @@ class BlackHoleSink(Sink):
         return {"type": "BlackHoleSink"}
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "BlackHoleSink":
         return BlackHoleSink()

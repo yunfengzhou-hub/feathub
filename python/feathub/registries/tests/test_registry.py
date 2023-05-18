@@ -30,6 +30,7 @@ from feathub.feature_views.feature import Feature
 from feathub.registries.local_registry import LocalRegistry
 from feathub.registries.registry import Registry
 from feathub.table.schema import Schema
+from feathub.table.table_descriptor import TableDescriptor
 
 
 class RegistryTest(unittest.TestCase):
@@ -156,14 +157,14 @@ class RegistryTestBase(ABC, unittest.TestCase):
 
     def test_delete_features(self):
         df = self.input_data.copy()
-        source = self._create_file_source(df)
+        source: TableDescriptor = self._create_file_source(df)
 
         f_cost_per_mile = Feature(
             name="cost_per_mile",
             dtype=types.Float32,
             transform="cost / distance + 10",
         )
-        features = DerivedFeatureView(
+        features: TableDescriptor = DerivedFeatureView(
             name="feature_view",
             source=source,
             features=[
@@ -185,7 +186,8 @@ class RegistryTestBase(ABC, unittest.TestCase):
                 "Table 'source' is not found in the cache or registry" in str(err)
             )
 
-        # A resolved feature should still be able to work after its dependency has been deleted.
+        # A resolved feature should still be able to work after its dependency
+        # has been deleted.
         result_df = self.processor.get_table(features=features).to_pandas()
 
         expected_result_df = df

@@ -49,7 +49,8 @@ def _merge_nested_dict(a, b) -> None:
             )
 
 
-# A wrapper class that verifies the to/from json methods for every saved table descriptor.
+# A wrapper class that verifies the to/from json methods for every saved table
+# descriptor.
 class WrappedRegistry(Registry):
     def __init__(self, registry: Registry):
         super().__init__("", {})

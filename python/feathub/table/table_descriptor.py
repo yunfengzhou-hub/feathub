@@ -131,7 +131,7 @@ class TableDescriptor(Entity):
         pass
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "TableDescriptor":
         if "FeatureView" in json_dict["type"]:
             from feathub.feature_views.feature_view import FeatureView
 

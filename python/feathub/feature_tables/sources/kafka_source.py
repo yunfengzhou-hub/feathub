@@ -168,7 +168,7 @@ class KafkaSource(FeatureTable):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "KafkaSource":
         return KafkaSource(
             name=json_dict["name"],
             bootstrap_server=json_dict["bootstrap_server"],
@@ -187,7 +187,9 @@ class KafkaSource(FeatureTable):
                 milliseconds=json_dict["max_out_of_orderness_ms"]
             ),
             startup_mode=json_dict["startup_mode"],
-            startup_datetime=timedelta(milliseconds=json_dict["startup_datetime_ms"])
+            startup_datetime=datetime.fromtimestamp(
+                json_dict["startup_datetime_ms"] / 1000.0
+            )
             if json_dict["startup_datetime_ms"] is not None
             else None,
             partition_discovery_interval=timedelta(

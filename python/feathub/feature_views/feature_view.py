@@ -250,7 +250,7 @@ class FeatureView(TableDescriptor, ABC):
         return dtype
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "FeatureView":
         if json_dict["type"] == "DerivedFeatureView":
             from feathub.feature_views.derived_feature_view import DerivedFeatureView
 

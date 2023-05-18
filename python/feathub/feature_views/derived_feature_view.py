@@ -197,7 +197,7 @@ class DerivedFeatureView(FeatureView):
         }
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "DerivedFeatureView":
         return DerivedFeatureView(
             name=json_dict["name"],
             source=json_dict["source"]

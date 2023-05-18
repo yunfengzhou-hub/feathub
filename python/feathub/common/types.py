@@ -49,7 +49,7 @@ class DType(ABC):
         pass
 
     @classmethod
-    def from_json(cls, json_dict: Dict):
+    def from_json(cls, json_dict: Dict) -> "DType":
         if json_dict["type"] == "PrimitiveType":
             return PrimitiveType(BasicDType[json_dict["basic_dtype"]])
         elif json_dict["type"] == "VectorType":

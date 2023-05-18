@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import time
-import unittest
 from abc import ABC
 from datetime import timedelta
 from enum import Enum
@@ -20,12 +19,12 @@ from math import sqrt
 from typing import List
 
 import pandas as pd
-from feathub.feature_views.feature_view import FeatureView
 
 from feathub.common.test_utils import to_epoch_millis, to_epoch
 from feathub.common.types import Int64, String, Float64, Float32
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
+from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
     ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG,
@@ -35,7 +34,6 @@ from feathub.feature_views.transforms.python_udf_transform import PythonUdfTrans
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.feature_views.transforms.transformation import Transformation
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
 
