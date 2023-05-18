@@ -14,14 +14,12 @@
 
 from __future__ import annotations
 
-import json
-from hashlib import sha256
-from typing import Optional, List, TYPE_CHECKING, Dict
 from abc import abstractmethod
+from typing import Optional, List, TYPE_CHECKING, Dict
 
 from feathub.common.exceptions import FeathubException
-from feathub.registries.entity import Entity
 from feathub.feature_views.feature import Feature
+from feathub.registries.entity import Entity
 
 if TYPE_CHECKING:
     from feathub.registries.registry import Registry
@@ -132,15 +130,6 @@ class TableDescriptor(Entity):
         Whether the Table is bounded.
         """
         pass
-
-    @property
-    def digest(self) -> str:
-        """
-        Gets the digest, a unique identifier, of the TableDescriptor.
-        """
-        return sha256(
-            json.dumps(self.to_json(), sort_keys=True).encode("utf8")
-        ).hexdigest()
 
     @classmethod
     def from_json(cls, json_dict: Dict) -> "TableDescriptor":

@@ -87,7 +87,7 @@ from feathub.processors.flink.table_builder.tests.test_flink_sql_feature_view im
 )
 from feathub.registries.local_registry import LocalRegistry
 from feathub.table.schema import Schema
-from feathub.tests.feathub_it_test_base import WrappedRegistry
+from feathub.tests.feathub_it_test_base import RegistryWithJsonCheck
 from feathub.tests.test_get_features import GetFeaturesITTest
 
 
@@ -455,7 +455,7 @@ class FlinkProcessorITTest(
             processor.flink_table_builder._built_tables = {}
 
             registry = cast(
-                LocalRegistry, cast(WrappedRegistry, client.registry).registry
+                LocalRegistry, cast(RegistryWithJsonCheck, client.registry).registry
             )
             registry.tables = {}
 
