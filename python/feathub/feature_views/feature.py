@@ -18,6 +18,7 @@ import json
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import DType
+from feathub.common.utils import append_metadata_to_json, from_json
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
@@ -88,6 +89,10 @@ class Feature:
         self.input_features = input_features
         self.description = description
         self.extra_props = {} if extra_props is None else extra_props
+        self.to_json = append_metadata_to_json(  # type: ignore
+            self.to_json,
+            self.__class__,
+        )
 
     def to_json(self) -> Dict:
         return {
@@ -100,7 +105,21 @@ class Feature:
             "extra_props": self.extra_props,
         }
 
-    # TODO: add from_json()
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "Feature":
+        return Feature(
+            name=json_dict["name"],
+            dtype=from_json(json_dict["dtype"])
+            if json_dict["dtype"] is not None
+            else None,
+            transform=from_json(json_dict["transform"]),
+            keys=json_dict["keys"],
+            input_features=[
+                from_json(feature) for feature in json_dict["input_features"]
+            ],
+            description=json_dict["description"],
+            extra_props=json_dict["extra_props"],
+        )
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2, sort_keys=True)

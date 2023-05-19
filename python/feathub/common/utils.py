@@ -11,14 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 from datetime import datetime, timezone, tzinfo
 from string import Template
-from typing import Union
+from typing import Union, Dict, Any, Type, TYPE_CHECKING
 from urllib.parse import urlparse
 
 from feathub.common.exceptions import FeathubException
-from feathub.table.schema import Schema
-from feathub.table.table_descriptor import TableDescriptor
+
+if TYPE_CHECKING:
+    from feathub.table.schema import Schema
+    from feathub.table.table_descriptor import TableDescriptor
 
 
 def to_java_date_format(python_format: str) -> str:
@@ -69,10 +72,12 @@ def to_unix_timestamp(
     return time.timestamp()
 
 
-def get_table_schema(table: TableDescriptor) -> Schema:
+def get_table_schema(table: "TableDescriptor") -> "Schema":
     """
     Return the schema of the table.
     """
+    from feathub.table.schema import Schema
+
     schema_builder = Schema.new_builder()
     for f in table.get_output_features():
         schema_builder.column(f.name, f.dtype)
@@ -85,3 +90,50 @@ def is_local_file_or_dir(url: str) -> bool:
     """
     url_parsed = urlparse(url)
     return url_parsed.scheme in ("file", "")
+
+
+def append_metadata_to_json(func: Any, __class__: Type) -> Any:
+    """
+    Decorates to_json methods, additionally saving the following
+    metadata to each json dict.
+
+    - "type": The full module and class name of the generator class.
+    - "version": The version of the used json format. Currently version
+                 value can only be 1.
+
+    :param func: The to_json method to be wrapped.
+    :param __class__: The host class for the to_json method.
+    """
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        json_dict = func(*args, **kwargs)
+        if "type" in json_dict or "version" in json_dict:
+            raise FeathubException(
+                f"f{__class__.__name__}#to_json should not contain metadata keys."
+            )
+        json_dict["type"] = __class__.__module__ + "." + __class__.__name__
+        json_dict["version"] = 1
+        return json_dict
+
+    return wrapper
+
+
+def from_json(json_dict: Dict) -> Any:
+    """
+    Converts a json dict to Python object. The input json dict must be generated
+    by a to_json method decorated by append_metadata_to_json.
+    """
+
+    if json_dict["version"] != 1:
+        raise FeathubException(
+            f"Unsupported json format version {json_dict['version']}."
+        )
+
+    delimiter_index = str(json_dict["type"]).rindex(".")
+    module_name = json_dict["type"][:delimiter_index]
+
+    # avoid contradict requirements for code format between black and flake8
+    class_name_start_index = delimiter_index + 1
+    class_name = json_dict["type"][class_name_start_index:]
+
+    return getattr(sys.modules[module_name], class_name).from_json(json_dict)

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 import json
+from abc import ABC, abstractmethod
 from typing import Dict
+
+from feathub.common.utils import append_metadata_to_json
 
 
 class Transformation(ABC):
@@ -24,7 +26,10 @@ class Transformation(ABC):
     """
 
     def __init__(self) -> None:
-        pass
+        self.to_json = append_metadata_to_json(  # type: ignore
+            self.to_json,
+            self.__class__,
+        )
 
     @abstractmethod
     def to_json(self) -> Dict:

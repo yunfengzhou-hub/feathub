@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Optional, List, TYPE_CHECKING, Dict
+
 from abc import abstractmethod
+from typing import Optional, List, TYPE_CHECKING, Dict
 
 from feathub.common.exceptions import FeathubException
-from feathub.registries.entity import Entity
+from feathub.common.utils import append_metadata_to_json
 from feathub.feature_views.feature import Feature
+from feathub.registries.entity import Entity
 
 if TYPE_CHECKING:
     from feathub.registries.registry import Registry
@@ -71,6 +73,10 @@ class TableDescriptor(Entity):
         self.keys = keys
         self.timestamp_field = timestamp_field
         self.timestamp_format = timestamp_format
+        self.to_json = append_metadata_to_json(  # type: ignore
+            self.to_json,
+            self.__class__,
+        )
 
     def build(
         self, registry: "Registry", props: Optional[Dict] = None

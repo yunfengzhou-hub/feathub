@@ -11,8 +11,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import logging
-import pickle
 import sys
 
 from pyflink.datastream import StreamExecutionEnvironment
@@ -20,6 +20,7 @@ from pyflink.table import (
     StreamTableEnvironment,
 )
 
+from feathub.common.utils import from_json
 from feathub.processors.flink.flink_class_loader_utils import (
     get_flink_context_class_loader,
 )
@@ -47,7 +48,7 @@ def run_job(feathub_job_descriptor_path: str) -> None:
     :param feathub_job_descriptor_path: The path of the FeatHub job config.
     """
     with open(feathub_job_descriptor_path, "rb") as f:
-        feathub_job_descriptor: FeathubJobDescriptor = pickle.load(f)
+        feathub_job_descriptor: FeathubJobDescriptor = from_json(json.load(f))
     logger.info(f"Loaded FeatHub job config: {str(feathub_job_descriptor)}")
 
     env = StreamExecutionEnvironment.get_execution_environment()

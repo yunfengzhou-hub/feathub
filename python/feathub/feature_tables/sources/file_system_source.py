@@ -14,6 +14,7 @@
 from datetime import timedelta
 from typing import List, Optional, Dict, Any
 
+from feathub.common.utils import from_json
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.table.schema import Schema
 
@@ -73,7 +74,6 @@ class FileSystemSource(FeatureTable):
 
     def to_json(self) -> Dict:
         return {
-            "type": "FileSystemSource",
             "name": self.name,
             "path": self.path,
             "data_format": self.data_format,
@@ -85,3 +85,21 @@ class FileSystemSource(FeatureTable):
             / timedelta(milliseconds=1),
             "data_format_props": self.data_format_props,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "FileSystemSource":
+        return FileSystemSource(
+            name=json_dict["name"],
+            path=json_dict["path"],
+            data_format=json_dict["data_format"],
+            schema=from_json(json_dict["schema"])
+            if json_dict["schema"] is not None
+            else None,
+            keys=json_dict["keys"],
+            timestamp_field=json_dict["timestamp_field"],
+            timestamp_format=json_dict["timestamp_format"],
+            max_out_of_orderness=timedelta(
+                milliseconds=json_dict["max_out_of_orderness_ms"]
+            ),
+            data_format_props=json_dict["data_format_props"],
+        )

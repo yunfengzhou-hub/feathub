@@ -25,4 +25,8 @@ class PrintSink(Sink):
         super().__init__(name="", system_name="print", table_uri={})
 
     def to_json(self) -> Dict:
-        return {"type": "PrintSink"}
+        return {}
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "PrintSink":
+        return PrintSink()

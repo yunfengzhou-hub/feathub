@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Union, Dict, Sequence, Optional, List
 
 from feathub.common.exceptions import FeathubException
+from feathub.common.utils import from_json
 from feathub.dsl.expr_utils import get_variables
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
@@ -183,7 +184,6 @@ class DerivedFeatureView(FeatureView):
 
     def to_json(self) -> Dict:
         return {
-            "type": "DerivedFeatureView",
             "name": self.name,
             "source": (
                 self.source if isinstance(self.source, str) else self.source.to_json()
@@ -195,3 +195,18 @@ class DerivedFeatureView(FeatureView):
             "keep_source_fields": self.keep_source_fields,
             "filter_expr": self.filter_expr,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "DerivedFeatureView":
+        return DerivedFeatureView(
+            name=json_dict["name"],
+            source=json_dict["source"]
+            if isinstance(json_dict["source"], str)
+            else from_json(json_dict["source"]),
+            features=[
+                feature if isinstance(feature, str) else from_json(feature)
+                for feature in json_dict["features"]
+            ],
+            keep_source_fields=json_dict["keep_source_fields"],
+            filter_expr=json_dict["filter_expr"],
+        )

@@ -59,7 +59,6 @@ class SlidingWindowTransform(Transformation):
 
     def to_json(self) -> Dict:
         return {
-            "type": "SlidingWindowTransform",
             "expr": self.expr,
             "agg_func": self.agg_func.value,
             "group_by_keys": self.group_by_keys,
@@ -68,3 +67,15 @@ class SlidingWindowTransform(Transformation):
             "filter_expr": self.filter_expr,
             "limit": self.limit,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "SlidingWindowTransform":
+        return SlidingWindowTransform(
+            expr=json_dict["expr"],
+            agg_func=json_dict["agg_func"],
+            group_by_keys=json_dict["group_by_keys"],
+            window_size=timedelta(milliseconds=json_dict["window_size_ms"]),
+            step_size=timedelta(milliseconds=json_dict["step_ms"]),
+            filter_expr=json_dict["filter_expr"],
+            limit=json_dict["limit"],
+        )

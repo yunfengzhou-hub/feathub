@@ -27,4 +27,8 @@ class BlackHoleSink(Sink):
         super().__init__(name="", system_name="blackhole", table_uri={})
 
     def to_json(self) -> Dict:
-        return {"type": "BlackHoleSink"}
+        return {}
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "BlackHoleSink":
+        return BlackHoleSink()

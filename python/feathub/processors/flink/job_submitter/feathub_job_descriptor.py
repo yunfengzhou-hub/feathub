@@ -16,6 +16,7 @@ from typing import Optional, Dict, Any, Union
 
 import pandas as pd
 
+from feathub.common.utils import from_json, append_metadata_to_json
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.table.table_descriptor import TableDescriptor
 
@@ -69,6 +70,57 @@ class FeathubJobDescriptor:
         self.local_registry_tables = local_registry_tables
         self.allow_overwrite = allow_overwrite
         self.props = props
+        self.to_json = append_metadata_to_json(  # type: ignore
+            self.to_json,
+            self.__class__,
+        )
+
+    def to_json(self) -> Dict:
+        return {
+            "features": self.features.to_json(),
+            "keys": None
+            if self.keys is None
+            else self.keys.to_json()
+            if isinstance(self.keys, TableDescriptor)
+            else self.keys.to_json(),
+            "start_datetime_ms": None
+            if self.start_datetime is None
+            else int(self.start_datetime.timestamp() * 1000),
+            "end_datetime_ms": None
+            if self.end_datetime is None
+            else int(self.end_datetime.timestamp() * 1000),
+            "sink": self.sink.to_json(),
+            "local_registry_tables": {
+                k: v if isinstance(v, str) else v.to_json()
+                for k, v in self.local_registry_tables.items()
+            },
+            "allow_overwrite": self.allow_overwrite,
+            "props": self.props,
+        }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "FeathubJobDescriptor":
+        return FeathubJobDescriptor(
+            features=from_json(json_dict["features"]),
+            keys=None
+            if json_dict["keys"] is None
+            else pd.read_json(json_dict["keys"])
+            if isinstance(json_dict["keys"], str)
+            else from_json(json_dict["keys"]),
+            start_datetime=None
+            if json_dict["start_datetime_ms"] is None
+            else datetime.fromtimestamp(json_dict["start_datetime_ms"] / 1000.0),
+            end_datetime=None
+            if json_dict["end_datetime_ms"] is None
+            else datetime.fromtimestamp(json_dict["end_datetime_ms"] / 1000.0),
+            sink=from_json(json_dict["sink"]),
+            local_registry_tables={
+                k: v if isinstance(v, str) else from_json(v)
+                for k, v in json_dict["local_registry_tables"].items()
+            },
+            allow_overwrite=json_dict["allow_overwrite"],
+            props=json_dict["props"],
+        )
 
     def __eq__(self, other: Any) -> bool:
         return (

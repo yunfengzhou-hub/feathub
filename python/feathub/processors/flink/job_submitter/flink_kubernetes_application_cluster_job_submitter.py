@@ -12,9 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import base64
+import json
 import logging
 import os
-import pickle
 import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor, Future, Executor
@@ -157,7 +157,7 @@ class FlinkKubernetesApplicationClusterJobSubmitter(FlinkJobSubmitter):
             kind="ConfigMap",
             binary_data={
                 "feathub_job_descriptor": base64.encodebytes(
-                    pickle.dumps(job_descriptor)
+                    json.dumps(job_descriptor.to_json(), sort_keys=True).encode("utf8")
                 ).decode()
             },
             metadata=metadata,

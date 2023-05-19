@@ -59,8 +59,15 @@ class MemoryStoreSource(FeatureTable):
 
     def to_json(self) -> Dict:
         return {
-            "type": "MemoryStoreSource",
             "name": self.name,
             "keys": self.keys,
             "table_name": self.table_name,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "MemoryStoreSource":
+        return MemoryStoreSource(
+            name=json_dict["name"],
+            keys=json_dict["keys"],
+            table_name=json_dict["table_name"],
+        )
