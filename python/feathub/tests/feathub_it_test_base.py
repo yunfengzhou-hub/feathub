@@ -70,8 +70,10 @@ class RegistryWithJsonCheck(Registry):
         features = self._save_and_reload_through_json(features)
         return self.registry.register_features(features, override)
 
-    def get_features(self, name: str) -> TableDescriptor:
-        return self.registry.get_features(name)
+    def get_features(
+        self, name: str, force_update: bool = False, is_built: bool = True
+    ) -> TableDescriptor:
+        return self.registry.get_features(name, force_update, is_built)
 
     def delete_features(self, name: str) -> bool:
         return self.delete_features(name)
