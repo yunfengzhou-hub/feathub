@@ -26,7 +26,7 @@ from feathub.table.table_descriptor import TableDescriptor
 
 class Registry(ABC):
     """
-    A registry implements APIs to build, register, get, and delete table descriptors,
+    A registry implements APIs to build, register, get, and delete feature descriptors,
     such as feature views with feature transformation definitions.
     """
 
@@ -40,36 +40,39 @@ class Registry(ABC):
 
     @abstractmethod
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self,
+        feature_descriptor_list: List[TableDescriptor],
+        props: Optional[Dict] = None,
     ) -> List[TableDescriptor]:
         """
-        For each table descriptor in the given list, resolve this descriptor by
+        For each feature descriptor in the given list, resolve this descriptor by
         recursively replacing its dependent table and feature names with the
-        corresponding table descriptors and features from the cache or registry.
-        Then recursively configure the table descriptor and its dependent table that is
-        referred by a TableDescriptor with the given global properties if it is not
+        corresponding feature descriptors and features from the cache or registry.
+        Then recursively configure the feature descriptor and its dependent table that
+        is referred by a TableDescriptor with the given global properties if it is not
         configured already.
 
-        And caches the resolved descriptors as well as their dependent table
-        descriptors in memory so that they can be used when building other table
+        And caches the resolved descriptors as well as their dependent feature
+        descriptors in memory so that they can be used when building other feature
         descriptors.
 
-        :param features_list: A list of table descriptors.
+        :param feature_descriptor_list: A list of feature descriptors.
         :param props: Optional. If it is not None, it is the global properties that are
-                      used to configure the given table descriptors.
+                      used to configure the given feature descriptors.
         :return: A list of resolved descriptors corresponding to the input descriptors.
         """
         pass
 
     @abstractmethod
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptor_list: List[TableDescriptor], override: bool = True
     ) -> bool:
         """
-        Registers the given table descriptor in the registry. Each descriptor is
+        Registers the given feature descriptors in the registry after building and
+        caching them in memory as described in build_features. Each descriptor is
         uniquely identified by its name in the registry.
 
-        :param features: A table descriptor to be registered.
+        :param feature_descriptor_list: A feature descriptor to be registered.
         :param override: Indicates whether the registration can overwrite existing
                          descriptor or not.
         :return: True iff registration is successful.
@@ -77,23 +80,30 @@ class Registry(ABC):
         pass
 
     @abstractmethod
-    def get_features(self, name: str) -> TableDescriptor:
+    def get_features(
+        self, name: str, force_update: bool = False, is_built: bool = True
+    ) -> TableDescriptor:
         """
-        Returns the table descriptor previously registered with the given name. Raises
+        Returns the feature descriptor previously registered with the given name. Raises
         RuntimeError if there is no such table in the registry.
 
-        :param name: The name of the table descriptor to search for.
-        :return: A table descriptor with the given name.
+        :param name: The name of the feature descriptor to search for.
+        :param force_update: If True, the feature descriptor would be directly searched
+                             in registry. If False, the feature descriptor would be
+                             searched in local cache first.
+        :param is_built: If False, the original feature descriptor would be returned. If
+                         True, the descriptor that had been built would be returned.
+        :return: A feature descriptor with the given name.
         """
         pass
 
     @abstractmethod
     def delete_features(self, name: str) -> bool:
         """
-        Deletes the table descriptor with the given name from the registry.
+        Deletes the feature descriptor with the given name from the registry.
 
-        :param name: The name of the table descriptor to be deleted.
-        :return: True iff a table descriptor with the given name is deleted.
+        :param name: The name of the feature descriptor to be deleted.
+        :return: True iff a feature descriptor with the given name is deleted.
         """
         pass
 

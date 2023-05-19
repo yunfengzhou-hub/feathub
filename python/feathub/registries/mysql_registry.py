@@ -90,8 +90,8 @@ class MySqlRegistryConfig(RegistryConfig):
         self.update_config_values(mysql_registry_config_defs)
 
 
-def _get_digest(json_dict: Dict) -> str:
-    return sha256(json.dumps(json_dict, sort_keys=True).encode("utf8")).hexdigest()
+def _get_digest(json_string: str) -> str:
+    return sha256(json_string).hexdigest()
 
 
 class MySqlRegistry(Registry):
@@ -111,6 +111,11 @@ class MySqlRegistry(Registry):
         self.port = mysql_registry_config.get(PORT_CONFIG)
         self.username = mysql_registry_config.get(USERNAME_CONFIG)
         self.password = mysql_registry_config.get(PASSWORD_CONFIG)
+
+        # dict that acts as a local cache for built and registered tables.
+        # each value in the dict is a tuple of table before build and table after build.
+        self.tables: Dict[str, Tuple[TableDescriptor, TableDescriptor]] = {}
+
         self.conn = mysql.connector.connect(
             host=self.host,
             port=self.port,
@@ -127,71 +132,91 @@ class MySqlRegistry(Registry):
                    `name` TEXT NOT NULL,
                    `timestamp` TIMESTAMP NOT NULL,
                    `is_deleted` BOOLEAN NOT NULL,
-                   `json_representation` TEXT,
+                   `original_json` TEXT,
+                   `built_json` TEXT,
                    PRIMARY KEY ( `digest`, `timestamp` )
                 );
             """
         )
 
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self,
+        feature_descriptor_list: List[TableDescriptor],
+        props: Optional[Dict] = None,
     ) -> List[TableDescriptor]:
         result = []
-        for table in features_list:
+        for table in feature_descriptor_list:
             if table.name == "":
                 raise FeathubException(
                     "Cannot build a TableDescriptor with empty name."
                 )
-            built_table = table.build(self, props)
-            self.register_features(built_table)
-            result.append(built_table)
+            self.tables[table.name] = (table, table.build(self, props))
+            result.append(self.tables[table.name][1])
 
         return result
 
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptor_list: List[TableDescriptor], override: bool = True
     ) -> bool:
-        try:
-            existing_features = self.get_features(features.name)
+        self.build_features(feature_descriptor_list)
 
-            if existing_features.to_json() == features.to_json():
-                return True
-            elif not override:
-                return False
-        except RuntimeError as e:
-            if str(e) != (
-                f"Table '{features.name}' is not found in the cache or registry. "
-                f"Please invoke build_features(..) for this table."
-            ):
-                raise e
+        for feature_descriptor in feature_descriptor_list:
+            try:
+                existing_features = self.get_features(feature_descriptor.name)
 
-        json_dict = features.to_json()
-        json_dict_str = json.dumps(json_dict, sort_keys=True).replace('"', '\\"')
-        self.cursor.execute(
-            f"""
-                INSERT INTO {self.table} (
-                   `digest`,
-                   `name`,
-                   `timestamp`,
-                   `is_deleted`,
-                   `json_representation`
-                ) VALUES (
-                    "{_get_digest(json_dict)}",
-                    "{features.name}",
-                    NOW(),
-                    False,
-                    "{json_dict_str}"
-                );
-            """
-        )
+                if (
+                    existing_features.to_json()
+                    == self.tables[feature_descriptor.name][1].to_json()
+                ):
+                    return True
+                elif not override:
+                    return False
+            except RuntimeError as e:
+                if str(e) != (
+                    f"Table '{feature_descriptor.name}' is not found in the cache "
+                    f"or registry. Please invoke build_features(..) for this table."
+                ):
+                    raise e
+
+            original_json = json.dumps(
+                self.tables[feature_descriptor.name][0], sort_keys=True
+            ).replace('"', '\\"')
+            built_json = json.dumps(
+                self.tables[feature_descriptor.name][1], sort_keys=True
+            ).replace('"', '\\"')
+            self.cursor.execute(
+                f"""
+                    INSERT INTO {self.table} (
+                       `digest`,
+                       `name`,
+                       `timestamp`,
+                       `is_deleted`,
+                       `original_json`,
+                       `built_json`
+                    ) VALUES (
+                        "{_get_digest(built_json)}",
+                        "{feature_descriptor.name}",
+                        NOW(),
+                        False,
+                        "{original_json}",
+                        "{built_json}"
+                    );
+                """
+            )
         return True
 
-    def get_features(self, name: str) -> TableDescriptor:
+    def get_features(
+        self, name: str, force_update: bool = False, is_built: bool = True
+    ) -> TableDescriptor:
+        if not force_update and name in self.tables:
+            return self.tables[name][1 if is_built else 0]
+
         self.cursor.execute(
             f"""
                 SELECT
                     `digest`,
-                    `json_representation`,
+                    `original_json`,
+                    `built_json`,
                     `is_deleted`
                 FROM {self.table}
                 WHERE `name` = "{name}"
@@ -206,15 +231,19 @@ class MySqlRegistry(Registry):
                 f"Table '{name}' is not found in the cache or registry. "
                 "Please invoke build_features(..) for this table."
             )
-        digest, json_representation, _ = results[0]
-        json_dict = json.loads(json_representation)
-        if _get_digest(json_dict) != digest:
+        digest, original_json, built_json, _ = results[0]
+        if is_built and _get_digest(built_json) != digest:
             raise FeathubException(
-                f"Acquired features's json representation cannot match the digest. "
-                f"Data might be broken. Json representation: {json_representation}, "
+                f"Acquired features's json string cannot match the digest. "
+                f"Data might be broken. Json string: {built_json}, "
                 f"digest: {digest}"
             )
-        return TableDescriptor.from_json(json_dict)
+
+        self.tables[name] = (
+            TableDescriptor.from_json(json.loads(original_json)),
+            TableDescriptor.from_json(json.loads(built_json)),
+        )
+        return self.tables[name][1 if is_built else 0]
 
     def delete_features(self, name: str) -> bool:
         self.cursor.execute(
@@ -226,6 +255,7 @@ class MySqlRegistry(Registry):
                 LIMIT 1;
             """
         )
+        self.tables.pop(name)
         return True
 
     def __del__(self) -> None:

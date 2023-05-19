@@ -24,7 +24,7 @@ class BlackHoleSinkITTest(ABC, FeathubITTestBase):
         sink = BlackHoleSink()
 
         self.client.materialize_features(
-            features=source,
+            feature_descriptor=source,
             sink=sink,
             allow_overwrite=True,
         ).wait()

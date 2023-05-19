@@ -131,7 +131,7 @@ def _test_redis_sink(
     )
 
     self.client.materialize_features(
-        features=source,
+        feature_descriptor=source,
         sink=sink,
         allow_overwrite=True,
     ).wait(30000)

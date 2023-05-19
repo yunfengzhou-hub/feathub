@@ -17,7 +17,7 @@ import tempfile
 import unittest
 import uuid
 from abc import abstractmethod
-from typing import Optional, List, Dict, Type
+from typing import Optional, List, Dict, Type, cast
 from unittest import TestLoader
 
 import pandas as pd
@@ -58,19 +58,27 @@ class RegistryWithJsonCheck(Registry):
         self.registry = registry
 
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self,
+        feature_descriptor_list: List[TableDescriptor],
+        props: Optional[Dict] = None,
     ) -> List[TableDescriptor]:
-        features_list = [self._save_and_reload_through_json(x) for x in features_list]
-        return self.registry.build_features(features_list, props)
+        feature_descriptor_list = [
+            self._save_and_reload_through_json(x) for x in feature_descriptor_list
+        ]
+        return self.registry.build_features(feature_descriptor_list, props)
 
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptor_list: List[TableDescriptor], override: bool = True
     ) -> bool:
-        features = self._save_and_reload_through_json(features)
-        return self.registry.register_features(features, override)
+        feature_descriptor_list = [
+            self._save_and_reload_through_json(x) for x in feature_descriptor_list
+        ]
+        return self.registry.register_features(feature_descriptor_list, override)
 
-    def get_features(self, name: str) -> TableDescriptor:
-        return self.registry.get_features(name)
+    def get_features(
+        self, name: str, force_update: bool = False, is_built: bool = True
+    ) -> TableDescriptor:
+        return self.registry.get_features(name, force_update, is_built)
 
     def delete_features(self, name: str) -> bool:
         return self.delete_features(name)
@@ -108,8 +116,10 @@ class FeathubITTestBase(unittest.TestCase):
     def tearDown(self) -> None:
         MemoryOnlineStore.get_instance().reset()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
-        if isinstance(self.client.registry, LocalRegistry):
-            self.client.registry.clear_features()
+
+        registry: Registry = cast(RegistryWithJsonCheck, self.client.registry).registry
+        if isinstance(registry, LocalRegistry):
+            registry.clear_features()
 
     @abstractmethod
     def get_client(self, extra_config: Optional[Dict] = None) -> FeathubClient:

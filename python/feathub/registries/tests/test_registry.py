@@ -214,5 +214,5 @@ class RegistryTestBase(ABC, unittest.TestCase):
             keep_source_fields=True,
         )
 
-        self.assertTrue(self.registry.register_features(source))
-        self.assertFalse(self.registry.register_features(features, override=False))
+        self.assertTrue(self.registry.register_features([source]))
+        self.assertFalse(self.registry.register_features([features], override=False))

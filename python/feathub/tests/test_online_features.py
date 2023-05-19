@@ -31,7 +31,7 @@ class OnlineFeaturesITTest(ABC, FeathubITTestBase):
 
         source_1 = self.create_file_source(self.input_data, keys=["name"])
         self.client.materialize_features(
-            features=source_1,
+            feature_descriptor=source_1,
             sink=sink,
             allow_overwrite=True,
         ).wait()
@@ -55,7 +55,7 @@ class OnlineFeaturesITTest(ABC, FeathubITTestBase):
 
         try:
             self.client.materialize_features(
-                features=source_2,
+                feature_descriptor=source_2,
                 sink=sink,
                 allow_overwrite=True,
             ).wait()
@@ -174,7 +174,7 @@ class OnlineFeaturesITTest(ABC, FeathubITTestBase):
 
         source = self.create_file_source(input_data, keys=["name"])
         self.client.materialize_features(
-            features=source,
+            feature_descriptor=source,
             sink=sink,
             allow_overwrite=True,
         ).wait()
