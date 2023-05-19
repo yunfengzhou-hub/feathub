@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from feathub.common.config import ConfigDef
 from feathub.common.exceptions import FeathubException
@@ -55,7 +55,7 @@ class LocalRegistry(Registry):
         super().__init__(LocalRegistry.REGISTRY_TYPE, props)
         local_registry_config = LocalRegistryConfig(props)
         self.namespace = local_registry_config.get(NAMESPACE_CONFIG)
-        self.tables: Dict[str, TableDescriptor] = {}
+        self.tables: Dict[str, Tuple[TableDescriptor, TableDescriptor]] = {}
 
     # TODO: maintain the version and version_timestamp so that we can recover the
     # lineage information of a table as upstream table evolves.
@@ -68,8 +68,8 @@ class LocalRegistry(Registry):
                 raise FeathubException(
                     "Cannot build a TableDescriptor with empty name."
                 )
-            self.tables[table.name] = table.build(self, props)
-            result.append(self.tables[table.name])
+            self.tables[table.name] = (table, table.build(self, props))
+            result.append(self.tables[table.name][1])
 
         return result
 
@@ -80,16 +80,18 @@ class LocalRegistry(Registry):
             raise FeathubException("Cannot register a TableDescriptor with empty name.")
         if features.name in self.tables and not override:
             return False
-        self.tables[features.name] = features
+        self.tables[features.name] = (features, features.build(self, None))
         return True
 
-    def get_features(self, name: str) -> TableDescriptor:
+    def get_features(
+        self, name: str, force_update: bool = False, is_built: bool = True
+    ) -> TableDescriptor:
         if name not in self.tables:
             raise RuntimeError(
                 f"Table '{name}' is not found in the cache or registry. "
                 "Please invoke build_features(..) for this table."
             )
-        return self.tables[name]
+        return self.tables[name][1 if is_built else 0]
 
     def delete_features(self, name: str) -> bool:
         if name not in self.tables:

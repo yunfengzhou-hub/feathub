@@ -157,3 +157,18 @@ class FeathubClient:
         :return: A list of resolved descriptors corresponding to the input descriptors.
         """
         return self.registry.build_features(features_list=features_list, props=props)
+
+    def register_features(
+        self, features: TableDescriptor, override: bool = True
+    ) -> bool:
+        """
+        Registers the given table descriptor in the registry after building and
+        caching them in memory as described in build_features. Each descriptor is
+        uniquely identified by its name in the registry.
+
+        :param features: A table descriptor to be registered.
+        :param override: Indicates whether the registration can overwrite existing
+                         descriptor or not.
+        :return: True iff registration is successful.
+        """
+        return self.registry.register_features(features=features, override=override)
