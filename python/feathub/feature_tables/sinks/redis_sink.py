@@ -76,3 +76,15 @@ class RedisSink(Sink):
             "password": self.password,
             "db_num": self.db_num,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "RedisSink":
+        return RedisSink(
+            namespace=json_dict["namespace"],
+            host=json_dict["host"],
+            port=json_dict["port"],
+            mode=json_dict["namespace"],
+            username=json_dict["username"],
+            password=json_dict["password"],
+            db_num=json_dict["db_num"],
+        )

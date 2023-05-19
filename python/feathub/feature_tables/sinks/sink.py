@@ -60,3 +60,56 @@ class Sink(FeatureTable, ABC):
 
     def get_bounded_view(self) -> TableDescriptor:
         raise FeathubException(f"Cannot get bounded feature table on {type(self)}.")
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "Sink":
+        if json_dict["type"] == "BlackHoleSink":
+            from feathub.feature_tables.sinks.black_hole_sink import (
+                BlackHoleSink,
+            )
+
+            return BlackHoleSink.from_json(json_dict)
+        elif json_dict["type"] == "KafkaSink":
+            from feathub.feature_tables.sinks.kafka_sink import (
+                KafkaSink,
+            )
+
+            return KafkaSink.from_json(json_dict)
+        elif json_dict["type"] == "FileSystemSink":
+            from feathub.feature_tables.sinks.file_system_sink import (
+                FileSystemSink,
+            )
+
+            return FileSystemSink.from_json(json_dict)
+        elif json_dict["type"] == "PrintSink":
+            from feathub.feature_tables.sinks.print_sink import (
+                PrintSink,
+            )
+
+            return PrintSink.from_json(json_dict)
+        elif json_dict["type"] == "RedisSink":
+            from feathub.feature_tables.sinks.redis_sink import (
+                RedisSink,
+            )
+
+            return RedisSink.from_json(json_dict)
+        elif json_dict["type"] == "MemoryStoreSink":
+            from feathub.feature_tables.sinks.memory_store_sink import (
+                MemoryStoreSink,
+            )
+
+            return MemoryStoreSink.from_json(json_dict)
+        elif json_dict["type"] == "MySQLSink":
+            from feathub.feature_tables.sinks.mysql_sink import (
+                MySQLSink,
+            )
+
+            return MySQLSink.from_json(json_dict)
+        elif json_dict["type"] == "HiveSink":
+            from feathub.feature_tables.sinks.hive_sink import (
+                HiveSink,
+            )
+
+            return HiveSink.from_json(json_dict)
+
+        raise FeathubException(f"Unsupported Sink type {json_dict['type']}.")

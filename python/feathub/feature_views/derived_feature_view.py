@@ -195,3 +195,18 @@ class DerivedFeatureView(FeatureView):
             "keep_source_fields": self.keep_source_fields,
             "filter_expr": self.filter_expr,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "DerivedFeatureView":
+        return DerivedFeatureView(
+            name=json_dict["name"],
+            source=json_dict["source"]
+            if isinstance(json_dict["source"], str)
+            else TableDescriptor.from_json(json_dict["source"]),
+            features=[
+                feature if isinstance(feature, str) else Feature.from_json(feature)
+                for feature in json_dict["features"]
+            ],
+            keep_source_fields=json_dict["keep_source_fields"],
+            filter_expr=json_dict["filter_expr"],
+        )

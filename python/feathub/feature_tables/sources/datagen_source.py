@@ -57,7 +57,7 @@ class RandomField:
             "type": "random",
             "minimum": self.minimum,
             "maximum": self.maximum,
-            "max_past": self.max_past,
+            "max_past_ms": self.max_past / timedelta(milliseconds=1),
             "length": self.length,
         }
 
@@ -77,6 +77,23 @@ class SequenceField:
 
     def to_json(self) -> Dict:
         return {"type": "sequence", "start": self.start, "end": self.end}
+
+
+def _get_field_from_json(json_dict: Dict) -> Union[RandomField, SequenceField]:
+    if json_dict["type"] == "random":
+        return RandomField(
+            minimum=json_dict["minimum"],
+            maximum=json_dict["maximum"],
+            max_past=timedelta(milliseconds=json_dict["max_past_ms"]),
+            length=json_dict["length"],
+        )
+    elif json_dict["type"] == "sequence":
+        return SequenceField(
+            start=json_dict["start"],
+            end=json_dict["end"],
+        )
+
+    raise FeathubException(f"Unsupported Field type {json_dict['type']}.")
 
 
 class DataGenSource(FeatureTable):
@@ -184,7 +201,7 @@ class DataGenSource(FeatureTable):
         return {
             "type": "DataGenSource",
             "name": self.name,
-            "schema": self.schema,
+            "schema": None if self.schema is None else self.schema.to_json(),
             "rows_per_second": self.rows_per_second,
             "number_of_rows": self.number_of_rows,
             "field_configs": {k: v.to_json() for k, v in self.field_configs.items()},
@@ -194,3 +211,24 @@ class DataGenSource(FeatureTable):
             "max_out_of_orderness_ms": self.max_out_of_orderness
             / timedelta(milliseconds=1),
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "DataGenSource":
+        return DataGenSource(
+            name=json_dict["name"],
+            schema=Schema.from_json(json_dict["schema"])
+            if json_dict["schema"] is not None
+            else None,
+            rows_per_second=json_dict["rows_per_second"],
+            number_of_rows=json_dict["number_of_rows"],
+            field_configs={
+                k: _get_field_from_json(v)
+                for k, v in json_dict["field_configs"].items()
+            },
+            keys=json_dict["keys"],
+            timestamp_field=json_dict["timestamp_field"],
+            timestamp_format=json_dict["timestamp_format"],
+            max_out_of_orderness=timedelta(
+                milliseconds=json_dict["max_out_of_orderness_ms"]
+            ),
+        )

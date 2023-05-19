@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import marshal
+import types
 from typing import Callable, Any, Dict
+
 import pandas as pd
 
 from feathub.feature_views.transforms.transformation import Transformation
@@ -70,6 +72,17 @@ class PythonUdfTransform(Transformation):
     def to_json(self) -> Dict:
         return {
             "type": "PythonUdfTransform",
+            "udf": str(marshal.dumps(self.original_udf.__code__)),
             "fail_on_exception": self.fail_on_exception,
             "value_on_exception": self.value_on_exception,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "PythonUdfTransform":
+        return PythonUdfTransform(
+            udf=types.FunctionType(
+                marshal.loads(bytes(json_dict["udf"])), globals(), "some_func_name"
+            ),
+            fail_on_exception=json_dict["fail_on_exception"],
+            value_on_exception=json_dict["value_on_exception"],
+        )

@@ -248,3 +248,24 @@ class FeatureView(TableDescriptor, ABC):
 
         variable_types[feature.name] = dtype
         return dtype
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "FeatureView":
+        if json_dict["type"] == "DerivedFeatureView":
+            from feathub.feature_views.derived_feature_view import DerivedFeatureView
+
+            return DerivedFeatureView.from_json(json_dict)
+        elif json_dict["type"] == "OnDemandFeatureView":
+            from feathub.feature_views.on_demand_feature_view import OnDemandFeatureView
+
+            return OnDemandFeatureView.from_json(json_dict)
+        elif json_dict["type"] == "SlidingFeatureView":
+            from feathub.feature_views.sliding_feature_view import SlidingFeatureView
+
+            return SlidingFeatureView.from_json(json_dict)
+        elif json_dict["type"] == "SqlFeatureView":
+            from feathub.feature_views.sql_feature_view import SqlFeatureView
+
+            return SqlFeatureView.from_json(json_dict)
+
+        raise FeathubException(f"Unsupported FeatureView type {json_dict['type']}.")

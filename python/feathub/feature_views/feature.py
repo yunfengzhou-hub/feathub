@@ -100,7 +100,21 @@ class Feature:
             "extra_props": self.extra_props,
         }
 
-    # TODO: add from_json()
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "Feature":
+        return Feature(
+            name=json_dict["name"],
+            dtype=DType.from_json(json_dict["dtype"])
+            if json_dict["dtype"] is not None
+            else None,
+            transform=Transformation.from_json(json_dict["transform"]),
+            keys=json_dict["keys"],
+            input_features=[
+                Feature.from_json(feature) for feature in json_dict["input_features"]
+            ],
+            description=json_dict["description"],
+            extra_props=json_dict["extra_props"],
+        )
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2, sort_keys=True)

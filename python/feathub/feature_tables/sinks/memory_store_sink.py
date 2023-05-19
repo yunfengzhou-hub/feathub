@@ -37,3 +37,7 @@ class MemoryStoreSink(Sink):
             "type": "MemoryStoreSink",
             "table_name": self.table_name,
         }
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "MemoryStoreSink":
+        return MemoryStoreSink(table_name=json_dict["table_name"])

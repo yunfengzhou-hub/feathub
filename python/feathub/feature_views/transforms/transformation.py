@@ -16,6 +16,8 @@ from abc import ABC, abstractmethod
 import json
 from typing import Dict
 
+from feathub.common.exceptions import FeathubException
+
 
 class Transformation(ABC):
     """
@@ -32,6 +34,39 @@ class Transformation(ABC):
         Returns a json-formatted object representing this sink.
         """
         pass
+
+    @classmethod
+    def from_json(cls, json_dict: Dict) -> "Transformation":
+        if json_dict["type"] == "ExpressionTransform":
+            from feathub.feature_views.transforms.expression_transform import (
+                ExpressionTransform,
+            )
+
+            return ExpressionTransform.from_json(json_dict)
+        elif json_dict["type"] == "JoinTransform":
+            from feathub.feature_views.transforms.join_transform import JoinTransform
+
+            return JoinTransform.from_json(json_dict)
+        elif json_dict["type"] == "OverWindowTransform":
+            from feathub.feature_views.transforms.over_window_transform import (
+                OverWindowTransform,
+            )
+
+            return OverWindowTransform.from_json(json_dict)
+        elif json_dict["type"] == "PythonUdfTransform":
+            from feathub.feature_views.transforms.python_udf_transform import (
+                PythonUdfTransform,
+            )
+
+            return PythonUdfTransform.from_json(json_dict)
+        elif json_dict["type"] == "SlidingWindowTransform":
+            from feathub.feature_views.transforms.sliding_window_transform import (
+                SlidingWindowTransform,
+            )
+
+            return SlidingWindowTransform.from_json(json_dict)
+
+        raise FeathubException(f"Unsupported Transformation type {json_dict['type']}.")
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=2, sort_keys=True)
