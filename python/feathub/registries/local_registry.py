@@ -60,10 +60,10 @@ class LocalRegistry(Registry):
     # TODO: maintain the version and version_timestamp so that we can recover the
     # lineage information of a table as upstream table evolves.
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self, feature_descriptors: List[TableDescriptor], props: Optional[Dict] = None
     ) -> List[TableDescriptor]:
         result = []
-        for table in features_list:
+        for table in feature_descriptors:
             if table.name == "":
                 raise FeathubException(
                     "Cannot build a TableDescriptor with empty name."
@@ -74,13 +74,16 @@ class LocalRegistry(Registry):
         return result
 
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptors: List[TableDescriptor], override: bool = True
     ) -> bool:
-        if features.name == "":
-            raise FeathubException("Cannot register a TableDescriptor with empty name.")
-        if features.name in self.tables and not override:
-            return False
-        self.tables[features.name] = (features, features.build(self, None))
+        for descriptor in feature_descriptors:
+            if descriptor.name == "":
+                raise FeathubException(
+                    "Cannot register a TableDescriptor with empty name."
+                )
+            if descriptor.name in self.tables and not override:
+                return False
+            self.tables[descriptor.name] = (descriptor, descriptor.build(self, None))
         return True
 
     def get_features(

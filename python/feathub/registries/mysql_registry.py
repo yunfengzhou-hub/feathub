@@ -140,12 +140,10 @@ class MySqlRegistry(Registry):
         )
 
     def build_features(
-        self,
-        features_list: List[TableDescriptor],
-        props: Optional[Dict] = None,
+        self, feature_descriptors: List[TableDescriptor], props: Optional[Dict] = None
     ) -> List[TableDescriptor]:
         result = []
-        for table in features_list:
+        for table in feature_descriptors:
             if table.name == "":
                 raise FeathubException(
                     "Cannot build a TableDescriptor with empty name."
@@ -156,45 +154,51 @@ class MySqlRegistry(Registry):
         return result
 
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptors: List[TableDescriptor], override: bool = True
     ) -> bool:
-        self.build_features([features])
+        self.build_features(feature_descriptors)
 
-        existing_features = self._get_feature_from_remote_registry_or_none(
-            features.name
-        )
-        if existing_features is not None:
-            _, built_features = existing_features
-            if built_features.to_json() == self.tables[features.name][1].to_json():
-                return True
-            elif not override:
-                return False
+        for descriptor in feature_descriptors:
+            existing_features = self._get_feature_from_remote_registry_or_none(
+                descriptor.name
+            )
+            if existing_features is not None:
+                _, built_features = existing_features
+                if (
+                    built_features.to_json()
+                    == self.tables[descriptor.name][1].to_json()
+                ):
+                    continue
+                elif not override:
+                    return False
 
-        original_json = json.dumps(
-            self.tables[features.name][0].to_json(), sort_keys=True
-        ).replace('"', '\\"')
-        built_json = json.dumps(self.tables[features.name][1].to_json(), sort_keys=True)
-        digest = _get_digest(built_json)
-        built_json = built_json.replace('"', '\\"')
-        self.cursor.execute(
-            f"""
-                INSERT INTO {self.table} (
-                   `digest`,
-                   `name`,
-                   `timestamp`,
-                   `is_deleted`,
-                   `original_json`,
-                   `built_json`
-                ) VALUES (
-                    "{digest}",
-                    "{features.name}",
-                    NOW(),
-                    False,
-                    "{original_json}",
-                    "{built_json}"
-                );
-            """
-        )
+            original_json = json.dumps(
+                self.tables[descriptor.name][0].to_json(), sort_keys=True
+            ).replace('"', '\\"')
+            built_json = json.dumps(
+                self.tables[descriptor.name][1].to_json(), sort_keys=True
+            )
+            digest = _get_digest(built_json)
+            built_json = built_json.replace('"', '\\"')
+            self.cursor.execute(
+                f"""
+                    INSERT INTO {self.table} (
+                       `digest`,
+                       `name`,
+                       `timestamp`,
+                       `is_deleted`,
+                       `original_json`,
+                       `built_json`
+                    ) VALUES (
+                        "{digest}",
+                        "{descriptor.name}",
+                        NOW(),
+                        False,
+                        "{original_json}",
+                        "{built_json}"
+                    );
+                """
+            )
         return True
 
     def get_features(
