@@ -59,16 +59,20 @@ class RegistryWithJsonCheck(Registry):
         self.registry = registry
 
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self, feature_descriptors: List[TableDescriptor], props: Optional[Dict] = None
     ) -> List[TableDescriptor]:
-        features_list = [self._save_and_reload_through_json(x) for x in features_list]
-        return self.registry.build_features(features_list, props)
+        feature_descriptors = [
+            self._save_and_reload_through_json(x) for x in feature_descriptors
+        ]
+        return self.registry.build_features(feature_descriptors, props)
 
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptors: List[TableDescriptor], override: bool = True
     ) -> bool:
-        features = self._save_and_reload_through_json(features)
-        return self.registry.register_features(features, override)
+        feature_descriptors = [
+            self._save_and_reload_through_json(x) for x in feature_descriptors
+        ]
+        return self.registry.register_features(feature_descriptors, override)
 
     def get_features(
         self, name: str, force_update: bool = False, is_built: bool = True

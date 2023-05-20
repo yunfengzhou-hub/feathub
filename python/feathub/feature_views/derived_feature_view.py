@@ -91,7 +91,7 @@ class DerivedFeatureView(FeatureView):
         if isinstance(self.source, str):
             source = registry.get_features(name=self.source)
         else:
-            source = registry.build_features(features_list=[self.source])[0]
+            source = registry.build_features(feature_descriptors=[self.source])[0]
 
         features = []
         for feature in self.features:

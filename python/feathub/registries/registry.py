@@ -42,7 +42,7 @@ class Registry(ABC):
     #  properties affecting feature descriptors saved in Registry.
     @abstractmethod
     def build_features(
-        self, features_list: List[TableDescriptor], props: Optional[Dict] = None
+        self, feature_descriptors: List[TableDescriptor], props: Optional[Dict] = None
     ) -> List[TableDescriptor]:
         """
         For each table descriptor in the given list, resolve this descriptor by
@@ -56,7 +56,7 @@ class Registry(ABC):
         descriptors in memory so that they can be used when building other table
         descriptors.
 
-        :param features_list: A list of table descriptors.
+        :param feature_descriptors: A list of table descriptors.
         :param props: Optional. If it is not None, it is the global properties that are
                       used to configure the given table descriptors.
         :return: A list of resolved descriptors corresponding to the input descriptors.
@@ -65,14 +65,14 @@ class Registry(ABC):
 
     @abstractmethod
     def register_features(
-        self, features: TableDescriptor, override: bool = True
+        self, feature_descriptors: List[TableDescriptor], override: bool = True
     ) -> bool:
         """
         Registers the given table descriptor in the registry after building and
         caching them in memory as described in build_features. Each descriptor is
         uniquely identified by its name in the registry.
 
-        :param features: A table descriptor to be registered.
+        :param feature_descriptors: A table descriptor to be registered.
         :param override: Indicates whether the registration can overwrite existing
                          descriptor or not.
         :return: True iff registration is successful.

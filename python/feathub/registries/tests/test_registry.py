@@ -130,7 +130,7 @@ class RegistryTestBase(ABC, unittest.TestCase):
 
         # get_table() should fail because 'source' is not built or registered.
         try:
-            self.processor.get_table(features=features).to_pandas()
+            self.processor.get_table(feature_descriptor=features).to_pandas()
             self.fail("RuntimeError should be raised.")
         except RuntimeError as err:
             self.assertTrue(
@@ -147,7 +147,7 @@ class RegistryTestBase(ABC, unittest.TestCase):
             )
 
         self.registry.build_features([source, features])
-        result_df = self.processor.get_table(features=features).to_pandas()
+        result_df = self.processor.get_table(feature_descriptor=features).to_pandas()
 
         expected_result_df = df
         expected_result_df["cost_per_mile"] = expected_result_df.apply(
@@ -188,7 +188,7 @@ class RegistryTestBase(ABC, unittest.TestCase):
 
         # A resolved feature should still be able to work after its dependency
         # has been deleted.
-        result_df = self.processor.get_table(features=features).to_pandas()
+        result_df = self.processor.get_table(feature_descriptor=features).to_pandas()
 
         expected_result_df = df
         expected_result_df["cost_per_mile"] = expected_result_df.apply(
@@ -214,9 +214,9 @@ class RegistryTestBase(ABC, unittest.TestCase):
             keep_source_fields=True,
         )
 
-        self.assertTrue(self.registry.register_features(source))
+        self.assertTrue(self.registry.register_features([source]))
         self.assertEqual(
-            self.registry.get_features(source.name, force_update=True).to_json(),
+            self.registry.get_features(source.name).to_json(),
             source.to_json(),
         )
-        self.assertFalse(self.registry.register_features(features, override=False))
+        self.assertFalse(self.registry.register_features([features], override=False))
