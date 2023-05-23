@@ -78,5 +78,5 @@ FeatHub window transforms.
 | ROW_NUMBER   | Assigns a unique, sequential number to each row, starting with one, to the input rows within the window partition. |
 | COUNT        | Returns the number of input rows.                                                           |
 | VALUE_COUNTS | Returns a frequency map containing the counts of unique values of an expression or column across input rows. |
-
+| COLLECT_LIST | returns a list that contains the ordered list of input values.                              |
 
