@@ -25,6 +25,11 @@ from feathub.common.utils import (
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.table.schema import Schema
 
+DEFAULT_HIVE_FLINK_PROCESSOR_PROPS = {
+    "streaming-source.enable": "true",
+    "streaming-source.partition-order": "create-time",
+}
+
 
 def get_hive_catalog_identifier(hive_catalog_conf_dir: str) -> str:
     """
@@ -106,6 +111,9 @@ class HiveSource(FeatureTable):
         self.hive_catalog_conf_dir = hive_catalog_conf_dir
         self.database = database
         self.processor_specific_props = processor_specific_props
+
+    def is_bounded(self) -> bool:
+        return False
 
     @append_metadata_to_json
     def to_json(self) -> Dict:

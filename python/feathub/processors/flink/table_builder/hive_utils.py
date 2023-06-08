@@ -28,7 +28,10 @@ from pyflink.table.types import DataType
 
 from feathub.common.types import DType
 from feathub.feature_tables.sinks.hive_sink import HiveSink
-from feathub.feature_tables.sources.hive_source import HiveSource
+from feathub.feature_tables.sources.hive_source import (
+    HiveSource,
+    DEFAULT_HIVE_FLINK_PROCESSOR_PROPS,
+)
 from feathub.processors.flink.flink_jar_utils import find_jar_lib, add_jar_to_t_env
 from feathub.processors.flink.flink_types_utils import to_flink_sql_type
 
@@ -83,12 +86,17 @@ def _create_table_if_not_exists(
     schema_sql = ", ".join(field_name_type)
 
     if processor_specific_props:
-        property_sql = ", ".join(
-            f"'{key}' = '{value}'" for key, value in processor_specific_props.items()
-        )
-        property_sql = f" TBLPROPERTIES({property_sql})"
+        processor_specific_props = {
+            **DEFAULT_HIVE_FLINK_PROCESSOR_PROPS,
+            **processor_specific_props,
+        }
     else:
-        property_sql = ""
+        processor_specific_props = DEFAULT_HIVE_FLINK_PROCESSOR_PROPS
+
+    property_sql = ", ".join(
+        f"'{key}' = '{value}'" for key, value in processor_specific_props.items()
+    )
+    property_sql = f" TBLPROPERTIES({property_sql})"
 
     create_table_statement = (
         f"CREATE TABLE IF NOT EXISTS {table} ({schema_sql}){property_sql};"
