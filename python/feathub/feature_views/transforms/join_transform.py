@@ -25,26 +25,26 @@ class JoinTransform(Transformation):
     def __init__(
         self,
         table_name: str,
-        feature_name: str,
+        feature_expr: str,
     ):
         """
         :param table_name: The name of a Source or FeatureView table.
-        :param feature_name: The feature name.
+        :param feature_expr: The feature expr.
         """
         super().__init__()
         self.table_name = table_name
-        self.feature_name = feature_name
+        self.feature_expr = feature_expr
 
     @append_metadata_to_json
     def to_json(self) -> Dict:
         return {
             "table_name": self.table_name,
-            "feature_name": self.feature_name,
+            "feature_expr": self.feature_expr,
         }
 
     @classmethod
     def from_json(cls, json_dict: Dict) -> "JoinTransform":
         return JoinTransform(
             table_name=json_dict["table_name"],
-            feature_name=json_dict["feature_name"],
+            feature_expr=json_dict["feature_expr"],
         )

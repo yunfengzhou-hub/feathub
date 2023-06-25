@@ -31,6 +31,7 @@ from feathub.dsl.ast import (
     IsOp,
     NullNode,
     CaseOp,
+    GetItemOp,
 )
 
 
@@ -74,6 +75,8 @@ class AbstractAstEvaluator(ABC):
             return self.eval_null_node(ast, variables)
         if isinstance(ast, CaseOp):
             return self.eval_case_op(ast, variables)
+        if isinstance(ast, GetItemOp):
+            return self.eval_get_item_op(ast, variables)
 
         raise FeathubExpressionException(f"Unknown AST node {type(ast)}.")
 
@@ -127,4 +130,8 @@ class AbstractAstEvaluator(ABC):
 
     @abc.abstractmethod
     def eval_case_op(self, ast: CaseOp, variables: Optional[Dict]) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def eval_get_item_op(self, ast: GetItemOp, variables: Optional[Dict]) -> Any:
         pass

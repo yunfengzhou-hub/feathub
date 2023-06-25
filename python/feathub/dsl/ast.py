@@ -23,8 +23,10 @@ from feathub.common.types import (
     Float32,
     Float64,
     Bool,
+    MapType,
     get_type_by_name,
     from_python_type,
+    VectorType,
 )
 from feathub.dsl.built_in_func import get_builtin_func_def
 
@@ -277,6 +279,39 @@ class IsOp(AbstractBinaryOp):
             "node_type": "IsOp",
             "left_child": self.left_child.to_json(),
             "is_not": self.is_not,
+        }
+
+
+class GetItemOp(AbstractBinaryOp):
+    def __init__(self, collection: ExprAST, key: ExprAST) -> None:
+        super().__init__(node_type="GetItemOp", left_child=collection, right_child=key)
+
+    def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
+        left_type = self.left_child.eval_dtype(variable_types)
+        right_type = self.right_child.eval_dtype(variable_types)
+
+        if isinstance(left_type, MapType):
+            if right_type != left_type.key_dtype:
+                raise FeathubException(
+                    f"Map key type {left_type.key_dtype} does not match "
+                    f"with expected {right_type}."
+                )
+            return left_type.value_dtype
+
+        if isinstance(left_type, VectorType):
+            if not isinstance(right_type, (Int32, Int64)):
+                raise FeathubException(
+                    f"List index should be integer or long, not {right_type}."
+                )
+            return left_type.dtype
+
+        raise FeathubException(f"{right_type} is not subscriptable.")
+
+    def to_json(self) -> Dict:
+        return {
+            "node_type": "GetItemOp",
+            "left_child": self.left_child.to_json(),
+            "right_child": self.right_child.to_json(),
         }
 
 

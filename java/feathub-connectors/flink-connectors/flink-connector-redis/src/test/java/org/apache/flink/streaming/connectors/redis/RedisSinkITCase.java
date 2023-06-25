@@ -133,4 +133,28 @@ public class RedisSinkITCase extends RedisITCaseBase {
             jedis.close();
         }
     }
+
+    public static void main(String[] args) {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
+        Map<String, String> map = new HashMap<>();
+        map.put("a", "11");
+        map.put("b", "2");
+
+        Table table = tEnv.fromValues(Row.of(1, map), Row.of(2, map));
+        table.printSchema();
+        tEnv.registerTable("input_table", table);
+
+        table = tEnv.fromValues(Row.of(1, map), Row.of(2, map));
+        table.printSchema();
+        tEnv.registerTable("input_table_2", table);
+
+        //        table = tEnv.sqlQuery("SELECT f0['a'] FROM input_table");
+        table =
+                tEnv.sqlQuery(
+                        "SELECT input_table.f1['a'] AS f0, LOWER(input_table_2.f1['a']) AS f1 "
+                                + "FROM input_table INNER JOIN input_table_2 "
+                                + "on input_table.f0 = input_table_2.f0");
+        table.printSchema();
+    }
 }

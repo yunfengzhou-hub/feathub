@@ -131,7 +131,7 @@ class LocalFeatureService(FeatureService):
         if isinstance(source, RedisSource) or isinstance(source, MySQLSource):
             client = self._get_online_store_client(source)
             return client.get(
-                input_data=input_df, feature_names=[join_transform.feature_name]
+                input_data=input_df, feature_names=[join_transform.feature_expr]
             )
 
         raise RuntimeError(f"Unsupported source {source.to_json()}.")

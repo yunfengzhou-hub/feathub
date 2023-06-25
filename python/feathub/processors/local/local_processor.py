@@ -476,7 +476,7 @@ class LocalProcessor(Processor):
         join_timestamp_field = join_descriptor.timestamp_field
         join_timestamp_format = join_descriptor.timestamp_format
         join_df = table_by_names[join_transform.table_name].df
-        join_feature = join_descriptor.get_feature(join_transform.feature_name)
+        join_feature = join_descriptor.get_feature(join_transform.feature_expr)
         if join_feature.keys is None:
             raise FeathubException(
                 f"The Feature {join_feature} to join must have keys."
@@ -508,7 +508,7 @@ class LocalProcessor(Processor):
                         break
                 if not keys_match:
                     continue
-                joined_value = join_row[join_transform.feature_name]
+                joined_value = join_row[join_transform.feature_expr]
                 joined_timestamp = join_timestamp
             result.append(joined_value)
 

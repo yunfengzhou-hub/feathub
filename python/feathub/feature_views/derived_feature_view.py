@@ -18,6 +18,8 @@ from typing import Union, Dict, Sequence, Optional, List
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.utils import from_json, append_metadata_to_json
+from feathub.dsl.ast import VariableNode
+from feathub.dsl.expr_parser import ExprParser
 from feathub.dsl.expr_utils import get_variables
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
@@ -27,6 +29,9 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.registries.registry import Registry
 from feathub.table.table_descriptor import TableDescriptor
+
+
+_parser = ExprParser()
 
 
 class DerivedFeatureView(FeatureView):
@@ -102,7 +107,7 @@ class DerivedFeatureView(FeatureView):
         for feature in self.features:
             if isinstance(feature, str):
                 feature = self._get_feature_from_feature_str(
-                    feature, registry, source, force_update
+                    feature, registry, source, force_update, f"f{len(features)}"
                 )
             features.append(feature)
 
@@ -152,12 +157,14 @@ class DerivedFeatureView(FeatureView):
                 )
             valid_variables.add(feature.name)
 
-    @staticmethod
+    # @staticmethod
     def _get_feature_from_feature_str(
+        self,
         feature_str: str,
         registry: Registry,
         source: TableDescriptor,
         force_update: bool,
+        default_feature_name: str,
     ) -> Feature:
         parts = feature_str.split(".")
         if len(parts) == 1:
@@ -171,22 +178,58 @@ class DerivedFeatureView(FeatureView):
             return feature
         elif len(parts) == 2:
             join_table_name = parts[0]
-            join_feature_name = parts[1]
+            join_feature_expr = parts[1]
             table_desc = registry.get_features(
                 name=join_table_name, force_update=force_update
             )
-            join_feature = table_desc.get_feature(feature_name=join_feature_name)
-            if join_feature.keys is None:
-                raise RuntimeError(
-                    f"Feature '{join_feature_name}' in the remote table "
-                    f"'{join_table_name}' does not have keys specified."
+
+            ast = _parser.parse(join_feature_expr)
+            print(type(ast))
+            if isinstance(ast, VariableNode):
+                join_feature_name = join_feature_expr
+                join_feature = table_desc.get_feature(feature_name=join_feature_name)
+                if join_feature.keys is None:
+                    raise RuntimeError(
+                        f"Feature '{join_feature_name}' in the remote table "
+                        f"'{join_table_name}' does not have keys specified."
+                    )
+                return Feature(
+                    name=join_feature_name,
+                    dtype=join_feature.dtype,
+                    transform=JoinTransform(join_table_name, join_feature_name),
+                    keys=join_feature.keys,
                 )
+
+            variable_types = {
+                feature.name: feature.dtype
+                for feature in table_desc.get_output_features()
+            }
+
+            print(join_feature_expr)
             return Feature(
-                name=join_feature_name,
-                dtype=join_feature.dtype,
-                transform=JoinTransform(join_table_name, join_feature_name),
-                keys=join_feature.keys,
+                name=default_feature_name,
+                dtype=ast.eval_dtype(variable_types),
+                transform=JoinTransform(join_table_name, join_feature_expr),
+                keys=table_desc.keys,
             )
+
+            # join_table_name = parts[0]
+            # join_feature_name = parts[1]
+            # table_desc = registry.get_features(
+            #     name=join_table_name, force_update=force_update
+            # )
+            # join_feature = table_desc.get_feature(feature_name=join_feature_name)
+            # if join_feature.keys is None:
+            #     raise RuntimeError(
+            #         f"Feature '{join_feature_name}' in the remote table "
+            #         f"'{join_table_name}' does not have keys specified."
+            #     )
+            # return Feature(
+            #     name=join_feature_name,
+            #     dtype=join_feature.dtype,
+            #     transform=JoinTransform(join_table_name, join_feature_name),
+            #     keys=join_feature.keys,
+            # )
         else:
             raise FeathubException(
                 "Invalid string format. If a feature is a string, it should be either "

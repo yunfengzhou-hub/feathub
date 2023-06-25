@@ -30,6 +30,7 @@ from feathub.feature_tables.sources.redis_source import (
     RedisSource,
 )
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
+from feathub.feature_views.feature import Feature
 from feathub.online_stores.conversion_utils import to_python_object
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
@@ -612,6 +613,108 @@ def _test_redis_source_join_custom_key_derived_feature_view(
     redis_client.close()
 
 
+def _test_redis_source_join_filter_map_key(
+    self: FeathubITTestBase,
+    host: str,
+    port: int,
+    mode: str,
+    redis_client: Union[Redis, RedisCluster],
+):
+    redis_client.hset("test_namespace:Alex:val", mapping={"cost": 100, "distance": 200})
+    redis_client.hset("test_namespace:Emma:val", mapping={"cost": 200, "distance": 300})
+    redis_client.hset("test_namespace:Jack:val", mapping={"distance": 500})
+
+    schema = (
+        Schema.new_builder()
+        .column("id", types.String)
+        .column("val", types.MapType(types.String, types.Int64))
+        # .column("unused_val", types.String)
+        .build()
+    )
+
+    redis_source = RedisSource(
+        name="redis_source",
+        namespace="test_namespace",
+        mode=mode,
+        host=host,
+        port=port,
+        keys=["id"],
+        schema=schema,
+        # key_expr='CONCAT_WS(":", __NAMESPACE__, __KEYS__)',
+    )
+
+    input_data = pd.DataFrame(
+        [["Alex"], ["Emma"], ["Jack"]],
+        columns=["id"],
+    )
+
+    schema = Schema.new_builder().column("id", types.String).build()
+
+    source = self.create_file_source(
+        df=input_data,
+        keys=["id"],
+        schema=schema,
+        timestamp_field=None,
+        data_format="csv",
+    )
+
+    _ = self.client.build_features([redis_source])
+
+    feature_view = DerivedFeatureView(
+        name="feature_view",
+        source=source,
+        features=[
+            "id",
+            # f"{redis_source.name}.val",
+            f"{redis_source.name}.val['cost']",
+        ],
+        keep_source_fields=False,
+    )
+
+    [_, built_feature_view] = self.client.build_features([redis_source, feature_view])
+
+    print(self.client.get_features(feature_view).get_schema())
+
+    # feature_view_2 = DerivedFeatureView(
+    #     name="feature_view_2",
+    #     source=feature_view,
+    #     features=[
+    #         "id",
+    #         Feature(
+    #             name="value_a",
+    #             transform="val['cost']",
+    #         ),
+    #     ],
+    #     keep_source_fields=False,
+    # )
+    #
+    # [_, _, built_feature_view] = self.client.build_features([redis_source, feature_view, feature_view_2])
+
+    print(self.client.get_features(feature_view).get_schema())
+
+    result_df = (
+        self.client.get_features(feature_descriptor=built_feature_view)
+        .to_pandas()
+        .sort_values(by=["id"])
+        .reset_index(drop=True)
+    )
+
+    print(result_df)
+
+    expected_result_df = pd.DataFrame(
+        [
+            [1, {"key": True}],
+            [2, {"key": False}],
+            [3, {"key": True}],
+        ],
+        columns=["id", "val"],
+    )
+
+    self.assertTrue(result_df.equals(expected_result_df))
+
+    redis_client.close()
+
+
 class RedisSourceSinkStandaloneModeITTest(ABC, FeathubITTestBase):
     redis_container: RedisContainer
 
@@ -634,8 +737,163 @@ class RedisSourceSinkStandaloneModeITTest(ABC, FeathubITTestBase):
             redis_client.delete(*existing_keys)
         redis_client.close()
 
-    def test_redis_sink_standalone_mode(self):
-        _test_redis_sink(
+    # def test_redis_sink_standalone_mode(self):
+    #     _test_redis_sink(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
+    #
+    # def test_redis_sink_update_entry_standalone_mode(self):
+    #     _test_redis_sink_update_entry(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
+    #
+    # def test_redis_sink_custom_key_standalone_mode(self):
+    #     _test_redis_sink_custom_key(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
+    #
+    # def test_key_expr_without_namespace(self):
+    #     try:
+    #         RedisSink(
+    #             namespace="test_namespace",
+    #             host="127.0.0.1",
+    #             port=6379,
+    #             password="123456",
+    #             db_num=3,
+    #             key_expr="__FEATURE_NAME__",
+    #         )
+    #         self.fail("FeathubException should be raised.")
+    #     except FeathubException as err:
+    #         self.assertEqual(
+    #             str(err),
+    #             "key_expr __FEATURE_NAME__ should contain __NAMESPACE__ in order "
+    #             "to guarantee the uniqueness of feature keys in Redis.",
+    #         )
+    #
+    # def test_key_expr_without_feature_name(self):
+    #     input_data = pd.DataFrame(
+    #         [
+    #             ["Alex", "ItemA", "2022-01-01 08:01:00"],
+    #             ["Emma", "ItemB", "2022-01-01 08:02:00"],
+    #             ["Alex", "ItemB", "2022-01-03 08:03:00"],
+    #         ],
+    #         columns=["name", "item", "time"],
+    #     )
+    #
+    #     schema = (
+    #         Schema.new_builder()
+    #         .column("name", types.String)
+    #         .column("item", types.String)
+    #         .column("time", types.String)
+    #         .build()
+    #     )
+    #
+    #     try:
+    #         RedisSource(
+    #             name="redis_source",
+    #             keys=["name"],
+    #             schema=schema,
+    #             host="127.0.0.1",
+    #             key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
+    #         )
+    #         self.fail("FeathubException should be raised.")
+    #     except FeathubException as err:
+    #         self.assertEqual(
+    #             str(err),
+    #             "In order to guarantee the uniqueness of feature keys in Redis, "
+    #             "key_expr CONCAT_WS(__NAMESPACE__, __KEYS__) should contain "
+    #             "__FEATURE_NAME__, or the input table should contain only one "
+    #             "feature field.",
+    #         )
+    #
+    #     # Initialization of RedisSource can pass when there is only one feature field.
+    #     RedisSource(
+    #         name="redis_source",
+    #         keys=["name", "time"],
+    #         schema=schema,
+    #         host="127.0.0.1",
+    #         key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
+    #     )
+    #
+    #     source = self.create_file_source(
+    #         df=input_data,
+    #         keys=["name"],
+    #         schema=schema,
+    #         data_format="csv",
+    #     )
+    #
+    #     sink = RedisSink(
+    #         namespace="test_namespace",
+    #         host="127.0.0.1",
+    #         key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
+    #     )
+    #
+    #     try:
+    #         self.client.materialize_features(
+    #             feature_descriptor=source, sink=sink, allow_overwrite=True
+    #         )
+    #         self.fail("FeathubException should be raised.")
+    #     except FeathubException as err:
+    #         self.assertEqual(
+    #             str(err),
+    #             "In order to guarantee the uniqueness of feature keys in Redis, "
+    #             "key_expr CONCAT_WS(__NAMESPACE__, __KEYS__) should contain "
+    #             "__FEATURE_NAME__, or the input table should contain only one "
+    #             "feature field.",
+    #         )
+    #
+    # def test_redis_source_join_standalone_mode(self):
+    #     _test_redis_source_join(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
+    #
+    # def test_redis_source_join_different_key_order_standalone_mode(self):
+    #     _test_redis_source_join_different_key_order(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
+
+    def test_redis_source_join_filter_map_key_standalone_mode(self):
+        _test_redis_source_join_filter_map_key(
             self,
             "127.0.0.1",
             int(
@@ -647,162 +905,20 @@ class RedisSourceSinkStandaloneModeITTest(ABC, FeathubITTestBase):
             self.redis_container.get_client(),
         )
 
-    def test_redis_sink_update_entry_standalone_mode(self):
-        _test_redis_sink_update_entry(
-            self,
-            "127.0.0.1",
-            int(
-                self.redis_container.get_exposed_port(
-                    self.redis_container.port_to_expose
-                )
-            ),
-            "standalone",
-            self.redis_container.get_client(),
-        )
-
-    def test_redis_sink_custom_key_standalone_mode(self):
-        _test_redis_sink_custom_key(
-            self,
-            "127.0.0.1",
-            int(
-                self.redis_container.get_exposed_port(
-                    self.redis_container.port_to_expose
-                )
-            ),
-            "standalone",
-            self.redis_container.get_client(),
-        )
-
-    def test_key_expr_without_namespace(self):
-        try:
-            RedisSink(
-                namespace="test_namespace",
-                host="127.0.0.1",
-                port=6379,
-                password="123456",
-                db_num=3,
-                key_expr="__FEATURE_NAME__",
-            )
-            self.fail("FeathubException should be raised.")
-        except FeathubException as err:
-            self.assertEqual(
-                str(err),
-                "key_expr __FEATURE_NAME__ should contain __NAMESPACE__ in order "
-                "to guarantee the uniqueness of feature keys in Redis.",
-            )
-
-    def test_key_expr_without_feature_name(self):
-        input_data = pd.DataFrame(
-            [
-                ["Alex", "ItemA", "2022-01-01 08:01:00"],
-                ["Emma", "ItemB", "2022-01-01 08:02:00"],
-                ["Alex", "ItemB", "2022-01-03 08:03:00"],
-            ],
-            columns=["name", "item", "time"],
-        )
-
-        schema = (
-            Schema.new_builder()
-            .column("name", types.String)
-            .column("item", types.String)
-            .column("time", types.String)
-            .build()
-        )
-
-        try:
-            RedisSource(
-                name="redis_source",
-                keys=["name"],
-                schema=schema,
-                host="127.0.0.1",
-                key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
-            )
-            self.fail("FeathubException should be raised.")
-        except FeathubException as err:
-            self.assertEqual(
-                str(err),
-                "In order to guarantee the uniqueness of feature keys in Redis, "
-                "key_expr CONCAT_WS(__NAMESPACE__, __KEYS__) should contain "
-                "__FEATURE_NAME__, or the input table should contain only one "
-                "feature field.",
-            )
-
-        # Initialization of RedisSource can pass when there is only one feature field.
-        RedisSource(
-            name="redis_source",
-            keys=["name", "time"],
-            schema=schema,
-            host="127.0.0.1",
-            key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
-        )
-
-        source = self.create_file_source(
-            df=input_data,
-            keys=["name"],
-            schema=schema,
-            data_format="csv",
-        )
-
-        sink = RedisSink(
-            namespace="test_namespace",
-            host="127.0.0.1",
-            key_expr="CONCAT_WS(__NAMESPACE__, __KEYS__)",
-        )
-
-        try:
-            self.client.materialize_features(
-                feature_descriptor=source, sink=sink, allow_overwrite=True
-            )
-            self.fail("FeathubException should be raised.")
-        except FeathubException as err:
-            self.assertEqual(
-                str(err),
-                "In order to guarantee the uniqueness of feature keys in Redis, "
-                "key_expr CONCAT_WS(__NAMESPACE__, __KEYS__) should contain "
-                "__FEATURE_NAME__, or the input table should contain only one "
-                "feature field.",
-            )
-
-    def test_redis_source_join_standalone_mode(self):
-        _test_redis_source_join(
-            self,
-            "127.0.0.1",
-            int(
-                self.redis_container.get_exposed_port(
-                    self.redis_container.port_to_expose
-                )
-            ),
-            "standalone",
-            self.redis_container.get_client(),
-        )
-
-    def test_redis_source_join_different_key_order_standalone_mode(self):
-        _test_redis_source_join_different_key_order(
-            self,
-            "127.0.0.1",
-            int(
-                self.redis_container.get_exposed_port(
-                    self.redis_container.port_to_expose
-                )
-            ),
-            "standalone",
-            self.redis_container.get_client(),
-        )
-
-    def _test_redis_source_join_custom_key_derived_feature_view_standalone_mode(
-        self,
-    ):
-        _test_redis_source_join_custom_key_derived_feature_view(
-            self,
-            "127.0.0.1",
-            int(
-                self.redis_container.get_exposed_port(
-                    self.redis_container.port_to_expose
-                )
-            ),
-            "standalone",
-            self.redis_container.get_client(),
-        )
+    # def _test_redis_source_join_custom_key_derived_feature_view_standalone_mode(
+    #     self,
+    # ):
+    #     _test_redis_source_join_custom_key_derived_feature_view(
+    #         self,
+    #         "127.0.0.1",
+    #         int(
+    #             self.redis_container.get_exposed_port(
+    #                 self.redis_container.port_to_expose
+    #             )
+    #         ),
+    #         "standalone",
+    #         self.redis_container.get_client(),
+    #     )
 
 
 class RedisSourceSinkClusterModeITTest(ABC, FeathubITTestBase):

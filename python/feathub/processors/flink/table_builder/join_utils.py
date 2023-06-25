@@ -21,10 +21,15 @@ from pyflink.table import (
 )
 from pyflink.table.types import DataType
 
+from feathub.common.exceptions import FeathubException
+from feathub.dsl.expr_parser import ExprParser
+from feathub.feature_views.feature import Feature
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
     ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG,
 )
+from feathub.feature_views.transforms.expression_transform import ExpressionTransform
+from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
@@ -53,13 +58,12 @@ class JoinFieldDescriptor:
 
     def __init__(
         self,
-        field_name: str,
+        field_expr: str,
         field_data_type: Optional[DataType] = None,
         valid_time_interval: Optional[timedelta] = None,
         default_value: Optional[Any] = None,
     ):
         """
-        :param field_name: The name of the field to join.
         :param field_data_type: Optional. If it is not None, the field is cast to the
                                 given type. Otherwise, use its original type.
         :param valid_time_interval: Optional. If it is not None, it specifies the valid
@@ -71,31 +75,38 @@ class JoinFieldDescriptor:
                                     to the `default_value`.
         :param default_value: The default value of the field when the value is expired.
         """
-        self.field_name = field_name
+        self.field_expr = field_expr
         self.field_data_type = field_data_type
         self.valid_time_interval = valid_time_interval
         self.default_value = default_value
 
     @staticmethod
     def from_table_descriptor_and_field_name(
-        table_descriptor: TableDescriptor, field_name: str
+        table_descriptor: TableDescriptor, feature: Feature
     ) -> "JoinFieldDescriptor":
-        feature = table_descriptor.get_feature(field_name)
+        # feature = table_descriptor.get_feature(field_name)
+        # feature = Feature(
+        #     name=transform
+        # )
         transform = feature.transform
+        if not isinstance(transform, JoinTransform):
+            raise FeathubException()
 
         if (
             not isinstance(table_descriptor, SlidingFeatureView)
             or not isinstance(transform, SlidingWindowTransform)
             or table_descriptor.config.get(ENABLE_EMPTY_WINDOW_OUTPUT_CONFIG)
         ):
-            return JoinFieldDescriptor(field_name, to_flink_type(feature.dtype))
+            return JoinFieldDescriptor(
+                transform.feature_expr, to_flink_type(feature.dtype)
+            )
 
         default_value, _ = get_default_value_and_type(
             agg_descriptor=AggregationFieldDescriptor.from_feature(feature)
         )
 
         return JoinFieldDescriptor(
-            feature.name,
+            transform.expr,
             to_flink_type(feature.dtype),
             transform.step_size,
             default_value,
@@ -108,7 +119,6 @@ class JoinFieldDescriptor:
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, self.__class__)
-            and self.field_name == other.field_name
             and self.valid_time_interval == other.valid_time_interval
             and self.default_value == other.default_value
             and self.field_data_type == other.field_data_type
@@ -117,7 +127,6 @@ class JoinFieldDescriptor:
     def __hash__(self) -> int:
         return hash(
             (
-                self.field_name,
                 self.valid_time_interval,
                 self.default_value,
                 self.field_data_type,
@@ -192,6 +201,7 @@ def _append_processing_time_attribute_if_not_exist(
     tmp_table_name = generate_random_table_name("tmp_table")
 
     t_env.create_temporary_view(tmp_table_name, table)
+
     table = t_env.sql_query(
         f"SELECT *, PROCTIME() AS {PROCESSING_TIME_ATTRIBUTE_NAME} "
         f"FROM {tmp_table_name};"

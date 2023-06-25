@@ -33,6 +33,7 @@ from feathub.dsl.ast import (
     CaseOp,
     IsOp,
     NullNode,
+    GetItemOp,
 )
 from feathub.dsl.expr_lexer_rules import ExprLexerRules
 
@@ -187,6 +188,12 @@ class ExprParser:
             p[0] = CaseOp.new_builder().case(p[2], p[4])
         else:
             p[0] = p[1].case(p[3], p[5])
+
+    def p_expression_get_item_op(self, p: yacc.YaccProduction) -> None:
+        """
+        expression : expression LSQUAREBR expression RSQUAREBR
+        """
+        p[0] = GetItemOp(p[1], p[3])
 
     def p_error(self, p: yacc.YaccProduction) -> None:  # noqa
         if p:
