@@ -278,7 +278,7 @@ class DerivedFeatureViewITTest(ABC, FeathubITTestBase):
         features = DerivedFeatureView(
             name="feature_view_2",
             source=source,
-            features=["timestamp"],
+            features=["`timestamp`"],
             keep_source_fields=False,
         )
 

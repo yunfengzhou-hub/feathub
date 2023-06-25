@@ -25,6 +25,7 @@ from pyflink.table.types import DataType
 from feathub.common.exceptions import FeathubException, FeathubTransformationException
 from feathub.common.types import DType
 from feathub.common.utils import to_java_date_format
+from feathub.dsl.expr_parser import ExprParser
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
@@ -72,6 +73,7 @@ from feathub.processors.flink.table_builder.python_udf_utils import (
 from feathub.processors.flink.table_builder.redis_utils import (
     get_redis_source,
     append_physical_key_columns_per_feature,
+    optimize_redis_source_lookup_map,
 )
 from feathub.processors.flink.table_builder.sliding_window_utils import (
     evaluate_sliding_window_transform,
@@ -127,6 +129,8 @@ class FlinkTableBuilder:
         # avoid recursively building the same table, so as to resolve potential circular
         # reference.
         self._tables_being_built: Set[str] = set()
+
+        self._parser = ExprParser()
 
         register_all_feathub_udf(self.t_env)
 
@@ -391,10 +395,8 @@ class FlinkTableBuilder:
                     ] = JoinFieldDescriptor.from_field_name(EVENT_TIME_ATTRIBUTE_NAME)
 
                 right_table_join_field_descriptors[
-                    join_transform.feature_name
-                ] = JoinFieldDescriptor.from_table_descriptor_and_field_name(
-                    right_table_descriptor, join_transform.feature_name
-                )
+                    feature.name
+                ] = JoinFieldDescriptor.from_feature(feature)
             else:
                 raise FeathubTransformationException(
                     f"Unsupported transformation type "
@@ -407,7 +409,35 @@ class FlinkTableBuilder:
         ), right_table_join_field_descriptors in right_tables.items():
             right_table = table_by_names[right_table_name]
             right_table_descriptor = self.registry.get_features(right_table_name)
+
             redis_source = get_redis_source(right_table_descriptor)
+            right_table = optimize_redis_source_lookup_map(
+                self.t_env,
+                right_table,
+                right_table_descriptor,
+                right_table_join_field_descriptors,
+            )
+
+            select_dict = {}
+            for field_name in right_table.get_schema().get_field_names():
+                select_dict[field_name] = f"`{field_name}`"
+            for (
+                field_name,
+                join_field_descriptor,
+            ) in right_table_join_field_descriptors.items():
+                select_dict[field_name] = to_flink_sql_expr(
+                    join_field_descriptor.field_expr
+                )
+            select_statement = ", ".join(
+                f"{field_expr} AS `{field_name}`"
+                for field_name, field_expr in select_dict.items()
+            )
+
+            self.t_env.create_temporary_view(right_table_name, right_table)
+            right_table = self.t_env.sql_query(
+                f"SELECT {select_statement} FROM {right_table_name};"
+            )
+            self.t_env.drop_temporary_view(right_table_name)
 
             # TODO: Add Java implementation to evaluate Feathub expression so that
             #  Redis lookup source can directly process key_expr and remove the
@@ -438,13 +468,6 @@ class FlinkTableBuilder:
                     "FlinkProcessor can only perform join operation when right table "
                     "contains timestamp field or is from a lookup source like Redis."
                 )
-
-            right_table = right_table.select(
-                *[
-                    native_flink_expr.col(right_table_field)
-                    for right_table_field in right_table_join_field_descriptors.keys()
-                ]
-            )
 
             tmp_table = temporal_join(
                 self.t_env,

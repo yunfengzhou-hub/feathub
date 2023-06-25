@@ -41,7 +41,7 @@ class MockTableDescriptor(TableDescriptor):
     def get_output_features(self) -> List[Feature]:
         if self.output_feature_names is None:
             raise RuntimeError("Unsupported operation.")
-        return [Feature(x, "") for x in self.output_feature_names]
+        return [Feature(x, f"`{x}`") for x in self.output_feature_names]
 
     def is_bounded(self) -> bool:
         raise RuntimeError("Unsupported operation.")

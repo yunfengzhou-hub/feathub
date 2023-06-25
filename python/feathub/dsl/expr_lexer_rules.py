@@ -58,6 +58,9 @@ class ExprLexerRules:
     tokens = [
         "LPAREN",
         "RPAREN",
+        "LSQUAREBR",
+        "RSQUAREBR",
+        "DOT",
         "LT",
         "LE",
         "GT",
@@ -74,6 +77,9 @@ class ExprLexerRules:
     # Regular expression rules for simple tokens
     t_LPAREN = r"\("
     t_RPAREN = r"\)"
+    t_LSQUAREBR = r"\["
+    t_RSQUAREBR = r"\]"
+    t_DOT = r"\."
     t_LT = r"<"
     t_LE = r"<="
     t_GT = r">"

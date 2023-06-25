@@ -30,6 +30,7 @@ from feathub.feature_tables.sources.redis_source import (
     RedisSource,
 )
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
+from feathub.feature_views.feature import Feature
 from feathub.online_stores.conversion_utils import to_python_object
 from feathub.table.schema import Schema
 from feathub.tests.feathub_it_test_base import FeathubITTestBase
@@ -661,6 +662,88 @@ def _test_redis_source_join_custom_key_derived_feature_view(
     redis_client.close()
 
 
+def _test_redis_source_join_filter_map_key(
+    self: FeathubITTestBase,
+    host: str,
+    port: int,
+    mode: str,
+    redis_client: Union[Redis, RedisCluster],
+):
+    redis_client.hset("test_namespace:Alex:val", mapping={"cost": 100, "distance": 200})
+    redis_client.hset("test_namespace:Emma:val", mapping={"cost": 200, "distance": 300})
+    redis_client.hset("test_namespace:Jack:val", mapping={"distance": 500})
+
+    schema = (
+        Schema.new_builder()
+        .column("id", types.String)
+        .column("val", types.MapType(types.String, types.Int64))
+        .build()
+    )
+
+    redis_source = RedisSource(
+        name="redis_source",
+        namespace="test_namespace",
+        mode=mode,
+        host=host,
+        port=port,
+        keys=["id"],
+        schema=schema,
+    )
+
+    input_data = pd.DataFrame(
+        [["Alex"], ["Emma"], ["Jack"]],
+        columns=["id"],
+    )
+
+    schema = Schema.new_builder().column("id", types.String).build()
+
+    source = self.create_file_source(
+        df=input_data,
+        keys=["id"],
+        schema=schema,
+        timestamp_field=None,
+        data_format="csv",
+    )
+
+    _ = self.client.build_features([redis_source])
+
+    feature_view = DerivedFeatureView(
+        name="feature_view",
+        source=source,
+        features=[
+            "id",
+            f"{redis_source.name}.val['cost']",
+            Feature(
+                name="f1",
+                transform=f"{redis_source.name}.val['cost']",
+            ),
+        ],
+        keep_source_fields=False,
+    )
+
+    [_, built_feature_view] = self.client.build_features([redis_source, feature_view])
+
+    result_df = (
+        self.client.get_features(feature_descriptor=built_feature_view)
+        .to_pandas()
+        .sort_values(by=["id"])
+        .reset_index(drop=True)
+    )
+
+    expected_result_df = pd.DataFrame(
+        [
+            ["Alex", 100, 100],
+            ["Emma", 200, 200],
+            ["Jack", None, None],
+        ],
+        columns=["id", "f0", "f1"],
+    )
+
+    self.assertTrue(result_df.equals(expected_result_df))
+
+    redis_client.close()
+
+
 class RedisSourceSinkStandaloneModeITTest(ABC, FeathubITTestBase):
     redis_container: RedisContainer
 
@@ -851,6 +934,19 @@ class RedisSourceSinkStandaloneModeITTest(ABC, FeathubITTestBase):
             self.redis_container.get_client(),
         )
 
+    def test_redis_source_join_filter_map_key_standalone_mode(self):
+        _test_redis_source_join_filter_map_key(
+            self,
+            "127.0.0.1",
+            int(
+                self.redis_container.get_exposed_port(
+                    self.redis_container.port_to_expose
+                )
+            ),
+            "standalone",
+            self.redis_container.get_client(),
+        )
+
     def _test_redis_source_join_custom_key_derived_feature_view_standalone_mode(
         self,
     ):
@@ -932,6 +1028,15 @@ class RedisSourceSinkClusterModeITTest(ABC, FeathubITTestBase):
 
     def test_redis_source_join_different_key_order_cluster_mode(self):
         _test_redis_source_join_different_key_order(
+            self,
+            "127.0.0.1",
+            7000,
+            "cluster",
+            self.redis_cluster_container.get_client(),
+        )
+
+    def test_redis_source_join_filter_map_key_cluster_mode(self):
+        _test_redis_source_join_filter_map_key(
             self,
             "127.0.0.1",
             7000,

@@ -27,6 +27,7 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
+from feathub.registries.registry import Registry
 from feathub.table.table_descriptor import TableDescriptor
 
 feathub_expr_parser = ExprParser()
@@ -114,7 +115,38 @@ class FeatureView(TableDescriptor, ABC):
             isinstance(self.source, str)
             or (isinstance(self.source, FeatureView) and self.source.is_unresolved())
             or any(isinstance(f, str) for f in self.features)
+            or any(
+                isinstance(cast(Feature, f).transform, JoinTransform)
+                and cast(Feature, f).dtype is None
+                for f in self.features
+            )
         )
+
+    @classmethod
+    def _resolve_join_feature_dtype(
+        cls,
+        source: TableDescriptor,
+        features: List[Feature],
+        registry: Registry,
+    ) -> None:
+        variable_types: Dict[str, Optional[DType]] = {
+            **{feature.name: feature.dtype for feature in features},
+            **{feature.name: feature.dtype for feature in source.get_output_features()},
+        }
+
+        for feature in [f for f in features if f.dtype is None]:
+            transform = feature.transform
+            if not isinstance(transform, JoinTransform) or feature.dtype is not None:
+                continue
+            table_desc = registry.get_features(
+                name=transform.table_name, force_update=True
+            )
+            for f in table_desc.get_output_features():
+                variable_types[transform.table_name + "." + f.name] = f.dtype
+
+            feature.dtype = feathub_expr_parser.parse(
+                transform.feature_expr
+            ).eval_dtype(variable_types)
 
     # TODO: Remove this method and add a method to OnDemandFeatureView to get output
     #  features with source fields.
@@ -226,8 +258,9 @@ class FeatureView(TableDescriptor, ABC):
         }
         return variable_types
 
+    @classmethod
     def _derive_feature_dtype(
-        self, feature: Feature, variable_types: Dict[str, DType]
+        cls, feature: Feature, variable_types: Dict[str, DType]
     ) -> Optional[DType]:
         transform = feature.transform
         if isinstance(transform, ExpressionTransform):

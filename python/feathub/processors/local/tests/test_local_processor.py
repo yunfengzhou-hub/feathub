@@ -141,3 +141,6 @@ class LocalProcessorITTest(
 
     def test_protobuf_all_types(self):
         pass
+
+    def test_expression_transform_on_joined_field(self):
+        pass

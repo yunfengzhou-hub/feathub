@@ -12,8 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
+import typing
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Sequence
 
 from feathub.common.exceptions import FeathubException, FeathubExpressionException
 from feathub.common.types import (
@@ -23,8 +24,10 @@ from feathub.common.types import (
     Float32,
     Float64,
     Bool,
+    MapType,
     get_type_by_name,
     from_python_type,
+    VectorType,
 )
 from feathub.dsl.built_in_func import get_builtin_func_def
 
@@ -49,6 +52,10 @@ class ExprAST(ABC):
         self.node_type = node_type
 
     @abstractmethod
+    def get_children(self) -> Sequence["ExprAST"]:
+        pass
+
+    @abstractmethod
     def to_json(self) -> Dict:
         """
         Returns a json-formatted object representing this node.
@@ -68,12 +75,18 @@ class AbstractUnaryOp(ExprAST, ABC):
         super().__init__(node_type)
         self.child = child
 
+    def get_children(self) -> Sequence["ExprAST"]:
+        return [self.child]
+
 
 class AbstractBinaryOp(ExprAST, ABC):
     def __init__(self, node_type: str, left_child: ExprAST, right_child: ExprAST):
         super().__init__(node_type)
         self.left_child = left_child
         self.right_child = right_child
+
+    def get_children(self) -> Sequence["ExprAST"]:
+        return [self.left_child, self.right_child]
 
 
 class BinaryOp(AbstractBinaryOp):
@@ -175,6 +188,9 @@ class ValueNode(ExprAST):
         super().__init__(node_type="ValueNode")
         self.value = value
 
+    def get_children(self) -> Sequence["ExprAST"]:
+        return []
+
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         return from_python_type(type(self.value))
 
@@ -189,6 +205,9 @@ class VariableNode(ExprAST):
     def __init__(self, var_name: str) -> None:
         super().__init__(node_type="VariableNode")
         self.var_name = var_name
+
+    def get_children(self) -> Sequence["ExprAST"]:
+        return []
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         if self.var_name not in variable_types:
@@ -207,6 +226,9 @@ class ArgListNode(ExprAST):
         super().__init__(node_type="ArgListNode")
         self.values = values
 
+    def get_children(self) -> Sequence["ExprAST"]:
+        return self.values
+
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         raise NotImplementedError("This method should not be called.")
 
@@ -222,6 +244,9 @@ class FuncCallOp(ExprAST):
         super().__init__(node_type="FuncCallOp")
         self.func_name = func_name.upper()
         self.args = args
+
+    def get_children(self) -> Sequence["ExprAST"]:
+        return [self.args]
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         arg_types = [arg.eval_dtype(variable_types) for arg in self.args.values]
@@ -250,6 +275,9 @@ class GroupNode(AbstractUnaryOp):
 class NullNode(ExprAST):
     def __init__(self) -> None:
         super().__init__(node_type="NullNode")
+
+    def get_children(self) -> Sequence["ExprAST"]:
+        return []
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         raise NotImplementedError("This method should not be called.")
@@ -280,6 +308,74 @@ class IsOp(AbstractBinaryOp):
         }
 
 
+class GetItemOp(AbstractBinaryOp):
+    def __init__(self, left_child: ExprAST, right_child: ExprAST) -> None:
+        super().__init__(
+            node_type="GetItemOp", left_child=left_child, right_child=right_child
+        )
+
+    def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
+        collection_type = self.left_child.eval_dtype(variable_types)
+        key_type = self.right_child.eval_dtype(variable_types)
+
+        if isinstance(collection_type, MapType):
+            if key_type != collection_type.key_dtype:
+                raise FeathubExpressionException(
+                    f"Map key type {collection_type.key_dtype} does not match "
+                    f"with expected {key_type}."
+                )
+            return collection_type.value_dtype
+
+        # TODO: Support parsing expression based on data types.
+        if isinstance(collection_type, VectorType):
+            # Suppose parsing an expression "a[b]" into Flink SQL. If a is a map, it
+            # should be parsed into "a[b]". If a is a list, it should be parsed into
+            # "a[b + 1]". The parse result depends on the data type, but Feathub
+            # has not uniform AbstractAstEvaluator#eval and ExprAST#eval_dtype, so
+            # the parsing process cannot get type information yet.
+            raise FeathubException(
+                "Getting element from list by index is not supported yet."
+            )
+
+        raise FeathubExpressionException(f"{key_type} is not subscriptable.")
+
+    def to_json(self) -> Dict:
+        return {
+            "node_type": "GetItemOp",
+            "left_child": self.left_child.to_json(),
+            "right_child": self.right_child.to_json(),
+        }
+
+
+class GetAttrOp(AbstractBinaryOp):
+    def __init__(self, left_child: ExprAST, right_child: ExprAST) -> None:
+        super().__init__(
+            node_type="GetAttrOp", left_child=left_child, right_child=right_child
+        )
+        if not isinstance(left_child, VariableNode):
+            raise FeathubExpressionException(
+                f"The left child of GetAttrOp should be VariableNode instead "
+                f"of {left_child}"
+            )
+
+    def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
+        table_name = typing.cast(VariableNode, self.left_child).var_name
+        prefix_index = len(table_name) + 1
+        variable_types = {
+            key[prefix_index:]: value
+            for key, value in variable_types.items()
+            if key.startswith(table_name)
+        }
+        return self.right_child.eval_dtype(variable_types)
+
+    def to_json(self) -> Dict:
+        return {
+            "node_type": "GetAttrOp",
+            "left_child": self.left_child.to_json(),
+            "right_child": self.right_child.to_json(),
+        }
+
+
 class CaseOp(ExprAST):
     def __init__(
         self,
@@ -300,6 +396,9 @@ class CaseOp(ExprAST):
         self.conditions = conditions
         self.results = results
         self.default = default
+
+    def get_children(self) -> Sequence["ExprAST"]:
+        return self.conditions + self.results + [self.default]
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
         result_types = set(

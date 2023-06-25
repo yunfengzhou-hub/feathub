@@ -102,7 +102,8 @@ class SlidingFeatureView(FeatureView):
       True, when the sliding window becomes emtpy, it outputs zero value for aggregation
       function SUM and COUNT, and output None for other aggregation function. If it is
       False, the sliding window doesn't output anything when the sliding window becomes
-      empty.
+      empty. Note that the result of downstream operations (joins, UDFs, etc.) might
+      vary depending on the value of this configuration.
     - sdk.sliding_feature_view.skip_same_window_output: Default to True. If it is True,
       the sliding feature view only outputs when the result of the sliding window
       changes. If it is False, the sliding feature view outputs at every step size even
@@ -256,6 +257,12 @@ class SlidingFeatureView(FeatureView):
             if feature.name == self.timestamp_field:
                 continue
             features.append(feature)
+
+        self._resolve_join_feature_dtype(
+            source=source,
+            features=features,
+            registry=registry,
+        )
 
         self._validate(source, features)
         props = {} if props is None else props

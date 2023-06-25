@@ -18,8 +18,10 @@ from typing import Union, Dict, Sequence, Optional, List
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.utils import from_json, append_metadata_to_json
+from feathub.dsl.ast import VariableNode, GetAttrOp
+from feathub.dsl.expr_parser import ExprParser
 from feathub.dsl.expr_utils import get_variables
-from feathub.feature_views.feature import Feature
+from feathub.feature_views.feature import Feature, _get_join_table_name
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
@@ -27,6 +29,8 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.transforms.python_udf_transform import PythonUdfTransform
 from feathub.registries.registry import Registry
 from feathub.table.table_descriptor import TableDescriptor
+
+_parser = ExprParser()
 
 
 class DerivedFeatureView(FeatureView):
@@ -98,15 +102,33 @@ class DerivedFeatureView(FeatureView):
                 feature_descriptors=[self.source], force_update=force_update
             )[0]
 
+        default_field_name_index = 0
+        while f"f{default_field_name_index}" in [
+            x.name for x in source.get_output_features()
+        ]:
+            default_field_name_index += 1
+
         features = []
         for feature in self.features:
             if isinstance(feature, str):
                 feature = self._get_feature_from_feature_str(
-                    feature, registry, source, force_update
+                    feature,
+                    registry,
+                    source,
+                    force_update,
+                    f"f{default_field_name_index}",
                 )
+                if feature.name == f"f{default_field_name_index}":
+                    default_field_name_index += 1
             features.append(feature)
 
         self._validate(features, source)
+
+        self._resolve_join_feature_dtype(
+            source=source,
+            features=features,
+            registry=registry,
+        )
 
         return DerivedFeatureView(
             name=self.name,
@@ -158,10 +180,13 @@ class DerivedFeatureView(FeatureView):
         registry: Registry,
         source: TableDescriptor,
         force_update: bool,
+        default_feature_name: str,
     ) -> Feature:
-        parts = feature_str.split(".")
-        if len(parts) == 1:
-            source_feature = source.get_feature(parts[0])
+        ast = _parser.parse(feature_str)
+        join_table_name = _get_join_table_name(ast)
+
+        if isinstance(ast, VariableNode):
+            source_feature = source.get_feature(ast.var_name)
             feature = Feature(
                 name=source_feature.name,
                 dtype=source_feature.dtype,
@@ -169,9 +194,13 @@ class DerivedFeatureView(FeatureView):
                 keys=source_feature.keys,
             )
             return feature
-        elif len(parts) == 2:
-            join_table_name = parts[0]
-            join_feature_name = parts[1]
+        elif (
+            isinstance(ast, GetAttrOp)
+            and isinstance(ast.left_child, VariableNode)
+            and isinstance(ast.right_child, VariableNode)
+        ):
+            join_table_name = ast.left_child.var_name
+            join_feature_name = ast.right_child.var_name
             table_desc = registry.get_features(
                 name=join_table_name, force_update=force_update
             )
@@ -187,11 +216,27 @@ class DerivedFeatureView(FeatureView):
                 transform=JoinTransform(join_table_name, join_feature_name),
                 keys=join_feature.keys,
             )
+        elif join_table_name is not None:
+            table_desc = registry.get_features(
+                name=join_table_name, force_update=force_update
+            )
+
+            return Feature(
+                name=default_feature_name,
+                dtype=None,
+                transform=JoinTransform(join_table_name, feature_str),
+                keys=table_desc.keys,
+            )
         else:
-            raise FeathubException(
-                "Invalid string format. If a feature is a string, it should be either "
-                "in the format {table_name}.{feature_name} or in the "
-                "format {feature_name}."
+            variable_types = {
+                feature.name: feature.dtype for feature in source.get_output_features()
+            }
+
+            return Feature(
+                name=default_feature_name,
+                dtype=ast.eval_dtype(variable_types),
+                transform=ExpressionTransform(feature_str),
+                keys=source.keys,
             )
 
     @append_metadata_to_json

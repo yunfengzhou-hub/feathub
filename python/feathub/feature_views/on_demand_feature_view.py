@@ -139,6 +139,12 @@ class OnDemandFeatureView(FeatureView):
 
             features.append(feature)
 
+        self._resolve_join_feature_dtype(
+            source=OnDemandFeatureView._OnlineRequestSource(schema=self.request_schema),
+            features=features,
+            registry=registry,
+        )
+
         return OnDemandFeatureView(
             name=self.name,
             features=features,

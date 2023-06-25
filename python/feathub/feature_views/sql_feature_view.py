@@ -114,7 +114,7 @@ class SqlFeatureView(FeatureView):
         return Feature(
             name=feature_name,
             dtype=self.schema.get_field_type(feature_name),
-            transform=feature_name,
+            transform=f"`{feature_name}`",
             keys=self.keys,
         )
 

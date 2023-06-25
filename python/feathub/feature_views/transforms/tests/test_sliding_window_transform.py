@@ -1184,11 +1184,11 @@ class SlidingWindowTransformITTest(ABC, FeathubITTestBase):
             ),
             DISABLE_EMPTY_WINDOW_OUTPUT_WITHOUT_SKIP_SAME_WINDOW_OUTPUT: pd.DataFrame(
                 [
-                    ["Alex", "2022-01-01 09:01:00", 0.0, 0],
+                    ["Alex", "2022-01-01 09:01:00", None, None],
                     ["Alex", "2022-01-01 09:02:00", 300.0, 2],
-                    ["Alex", "2022-01-01 09:05:00", 0.0, 0],
+                    ["Alex", "2022-01-01 09:05:00", 300.0, 2],
                     ["Alex", "2022-01-01 09:07:00", 450.0, 1],
-                    ["Alex", "2022-01-01 09:09:00", 0.0, 0],
+                    ["Alex", "2022-01-01 09:09:00", 450.0, 1],
                 ],
                 columns=["name", "time", "last_2_minute_total_cost", "cnt"],
             ),

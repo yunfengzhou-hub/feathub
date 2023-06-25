@@ -269,6 +269,13 @@ class SparkDataFrameBuilder:
                     )
 
                 join_transform = feature.transform
+
+                if not join_transform.expr_is_feature_name():
+                    raise FeathubException(
+                        "It is not supported to use Feathub expression in JoinTransform"
+                        " for spark processor."
+                    )
+
                 right_table_descriptor = descriptors_by_names[join_transform.table_name]
                 if right_table_descriptor.timestamp_field is None:
                     raise FeathubException(
@@ -289,9 +296,9 @@ class SparkDataFrameBuilder:
                 ] = JoinFieldDescriptor.from_field_name(EVENT_TIME_ATTRIBUTE_NAME)
 
                 join_field_descriptors[
-                    join_transform.feature_name
+                    join_transform.feature_expr
                 ] = JoinFieldDescriptor.from_table_descriptor_and_field_name(
-                    right_table_descriptor, join_transform.feature_name
+                    right_table_descriptor, join_transform.feature_expr
                 )
             else:
                 raise RuntimeError(

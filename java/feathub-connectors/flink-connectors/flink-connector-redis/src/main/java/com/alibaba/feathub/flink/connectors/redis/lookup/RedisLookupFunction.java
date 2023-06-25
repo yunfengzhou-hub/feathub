@@ -37,9 +37,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.alibaba.feathub.flink.connectors.redis.RedisConfigs.HASH_FIELDS;
 import static com.alibaba.feathub.flink.connectors.redis.RedisConfigs.KEY_FIELDS;
 
 /**
@@ -75,6 +77,8 @@ public class RedisLookupFunction extends LookupFunction {
 
     private final DataType[] fieldDataTypes;
 
+    private final String[] hashFields;
+
     private transient JedisClient client;
 
     private transient RowData.FieldGetter[] logicalKeyGetters;
@@ -87,6 +91,11 @@ public class RedisLookupFunction extends LookupFunction {
         this.featureFieldIndices = getFeatureFieldIndices(schema, config);
         this.physicalKeyFieldIndices = getPhysicalKeyFieldIndices(schema, featureFieldIndices);
         this.fieldDataTypes = schema.getColumnDataTypes().toArray(new DataType[0]);
+        if (config.get(HASH_FIELDS) == null || this.featureFieldIndices.length > 1) {
+            this.hashFields = null;
+        } else {
+            this.hashFields = config.get(HASH_FIELDS).split(",");
+        }
     }
 
     @Override
@@ -135,7 +144,16 @@ public class RedisLookupFunction extends LookupFunction {
                         ConversionUtils.fromList(redisData, (CollectionDataType) valueType);
                 result.setField(valueFieldIndex, flinkSqlData);
             } else if (valueType instanceof KeyValueDataType) {
-                Map<String, String> redisData = client.hgetAll(key);
+                Map<String, String> redisData;
+                if (hashFields == null) {
+                    redisData = client.hgetAll(key);
+                } else {
+                    redisData = new HashMap<>();
+                    List<String> values = client.hmget(key, hashFields);
+                    for (int j = 0; j < hashFields.length; j++) {
+                        redisData.put(hashFields[j], values.get(j));
+                    }
+                }
                 MapData flinkSqlData =
                         ConversionUtils.fromMap(redisData, (KeyValueDataType) valueType);
                 result.setField(valueFieldIndex, flinkSqlData);

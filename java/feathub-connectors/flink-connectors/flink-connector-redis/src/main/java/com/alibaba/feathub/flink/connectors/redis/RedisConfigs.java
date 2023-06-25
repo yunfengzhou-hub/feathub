@@ -74,6 +74,15 @@ public class RedisConfigs {
                             "If true, map-typed data (or hash in Redis) would be partially updated "
                                     + "instead of completely overridden by new data.");
 
+    public static final ConfigOption<String> HASH_FIELDS =
+            ConfigOptions.key("hashFields")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription(
+                            "A comma-separated list of fields of a Redis hash that needs "
+                                    + "to be acquired when looking up a map value. Effective when there "
+                                    + "is only one non-key map-typed column in a lookup source.");
+
     /** Supported Redis deployment modes. */
     public enum RedisMode {
         STANDALONE,

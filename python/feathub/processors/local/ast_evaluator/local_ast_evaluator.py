@@ -32,6 +32,8 @@ from feathub.dsl.ast import (
     IsOp,
     NullNode,
     CaseOp,
+    GetItemOp,
+    GetAttrOp,
 )
 from feathub.processors.local.ast_evaluator.local_func_evaluator import (
     LocalFuncEvaluator,
@@ -190,3 +192,11 @@ class LocalAstEvaluator(AbstractAstEvaluator):
             return self.eval(ast.default, variables)
 
         return None
+
+    def eval_get_item_op(self, ast: GetItemOp, variables: Optional[Dict]) -> Any:
+        left_value = self.eval(ast.left_child, variables)
+        right_value = self.eval(ast.right_child, variables)
+        return left_value[right_value] if right_value in left_value else None
+
+    def eval_get_attr_op(self, ast: GetAttrOp, variables: Optional[Dict]) -> Any:
+        raise FeathubException("unsupported operation.")

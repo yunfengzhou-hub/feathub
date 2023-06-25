@@ -28,6 +28,8 @@ from feathub.dsl.ast import (
     IsOp,
     NullNode,
     CaseOp,
+    GetItemOp,
+    GetAttrOp,
 )
 from feathub.processors.flink.ast_evaluator.functions import evaluate_function
 
@@ -103,3 +105,13 @@ class FlinkAstEvaluator(AbstractAstEvaluator):
             eval_result = eval_result + f"ELSE {default} "
         eval_result = eval_result + "END"
         return eval_result
+
+    def eval_get_item_op(self, ast: GetItemOp, variables: Optional[Dict]) -> Any:
+        left_val = self.eval(ast.left_child, variables)
+        right_val = self.eval(ast.right_child, variables)
+        return f"{left_val}[{right_val}]"
+
+    def eval_get_attr_op(self, ast: GetAttrOp, variables: Optional[Dict]) -> Any:
+        left_val = self.eval(ast.left_child, variables)
+        right_val = self.eval(ast.right_child, variables)
+        return f"{left_val}.{right_val}"

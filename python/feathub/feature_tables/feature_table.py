@@ -108,7 +108,7 @@ class FeatureTable(TableDescriptor, ABC):
             Feature(
                 name=field_name,
                 dtype=self.schema.get_field_type(field_name),
-                transform=field_name,
+                transform=f"`{field_name}`",
                 keys=self.keys,
             )
             for field_name in self.schema.field_names

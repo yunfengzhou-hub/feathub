@@ -121,6 +121,12 @@ class LocalFeatureService(FeatureService):
         if not isinstance(join_transform, JoinTransform):
             raise RuntimeError(f"Feature '{feature.name}' should use JoinTransform.")
 
+        if not join_transform.expr_is_feature_name():
+            raise FeathubException(
+                "It is not supported to use Feathub expression in JoinTransform when "
+                "getting online features."
+            )
+
         source = self.registry.get_features(join_transform.table_name)
 
         if isinstance(source, MemoryStoreSource):
@@ -131,7 +137,7 @@ class LocalFeatureService(FeatureService):
         if isinstance(source, RedisSource) or isinstance(source, MySQLSource):
             client = self._get_online_store_client(source)
             return client.get(
-                input_data=input_df, feature_names=[join_transform.feature_name]
+                input_data=input_df, feature_names=[join_transform.feature_expr]
             )
 
         raise RuntimeError(f"Unsupported source {source.to_json()}.")
