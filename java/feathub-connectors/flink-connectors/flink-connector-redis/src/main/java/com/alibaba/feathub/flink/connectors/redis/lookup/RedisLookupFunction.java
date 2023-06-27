@@ -131,16 +131,25 @@ public class RedisLookupFunction extends LookupFunction {
             DataType valueType = fieldDataTypes[valueFieldIndex];
             if (valueType instanceof CollectionDataType) {
                 List<String> redisData = client.lrange(key, 0, -1);
+                if (redisData.isEmpty()) {
+                    continue;
+                }
                 ArrayData flinkSqlData =
                         ConversionUtils.fromList(redisData, (CollectionDataType) valueType);
                 result.setField(valueFieldIndex, flinkSqlData);
             } else if (valueType instanceof KeyValueDataType) {
                 Map<String, String> redisData = client.hgetAll(key);
+                if (redisData.isEmpty()) {
+                    continue;
+                }
                 MapData flinkSqlData =
                         ConversionUtils.fromMap(redisData, (KeyValueDataType) valueType);
                 result.setField(valueFieldIndex, flinkSqlData);
             } else {
                 String redisData = client.get(key);
+                if (redisData == null) {
+                    continue;
+                }
                 Object flinkSqlData = ConversionUtils.fromString(redisData, valueType);
                 result.setField(valueFieldIndex, flinkSqlData);
             }
