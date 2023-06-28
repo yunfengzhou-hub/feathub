@@ -157,7 +157,7 @@ class AstTypeDeriveTest(unittest.TestCase):
             Float32, ast.eval_dtype({"a": Int32, "b": Int64, "c": Float32})
         )
 
-    def test_get_item_op_result_type(self):
+    def test_bracket_op_result_type(self):
         ast = self.expr_parser.parse("a['key1']")
         self.assertEqual(
             Int32,

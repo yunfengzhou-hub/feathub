@@ -19,8 +19,8 @@ import json
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import DType
 from feathub.common.utils import append_metadata_to_json, from_json
-from feathub.dsl.ast import ExprAST, GetAttrOp, VariableNode
 from feathub.dsl.expr_parser import ExprParser
+from feathub.dsl.expr_utils import get_join_table_name
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
@@ -31,33 +31,6 @@ from feathub.feature_views.transforms.expression_transform import ExpressionTran
 
 
 _parser = ExprParser()
-
-
-def _get_join_table_name(ast: ExprAST) -> Optional[str]:
-    """
-    Returns the name of the table to be joined with if the ExprAST
-    refers to features in another table.
-    """
-    table_name = None
-    if isinstance(ast, GetAttrOp):
-        if not isinstance(ast.left_child, VariableNode):
-            raise FeathubException()
-        table_name = ast.left_child.var_name
-
-    for child in ast.get_children():
-        tmp_table_name = _get_join_table_name(child)
-        if tmp_table_name is None:
-            continue
-        elif table_name is None:
-            table_name = tmp_table_name
-        elif table_name != tmp_table_name:
-            raise FeathubException(
-                f"JoinTransform only supports joining one other table, "
-                f"while at least two tables are found: {table_name} and "
-                f"{tmp_table_name}"
-            )
-
-    return table_name
 
 
 class Feature:
@@ -126,7 +99,7 @@ class Feature:
     @classmethod
     def _str_to_transformation(cls, transform: str) -> Transformation:
         ast = _parser.parse(transform)
-        join_table_name = _get_join_table_name(ast)
+        join_table_name = get_join_table_name(ast)
 
         if join_table_name is None:
             return ExpressionTransform(transform)

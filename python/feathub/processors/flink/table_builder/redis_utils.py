@@ -26,8 +26,9 @@ from pyflink.table import (
 from feathub.common import types
 from feathub.common.exceptions import FeathubException
 from feathub.common.types import MapType
-from feathub.dsl.ast import GetItemOp, ValueNode, VariableNode
+from feathub.dsl.ast import BracketOp, ValueNode, VariableNode
 from feathub.dsl.expr_parser import ExprParser
+from feathub.dsl.expr_utils import is_id
 from feathub.feature_tables.sinks.redis_sink import RedisSink
 from feathub.feature_tables.sources.redis_source import (
     NAMESPACE_KEYWORD,
@@ -131,11 +132,11 @@ def optimize_redis_source_lookup_map(
 
     hash_fields = set()
     for descriptor in join_field_descriptors.values():
-        ast = _parser.parse(descriptor.field_expr)
-        if isinstance(ast, VariableNode) and ast.var_name in table_descriptor.keys:
+        if is_id(descriptor.field_expr) and descriptor.field_expr in table_descriptor.keys:
             continue
-        elif (
-            isinstance(ast, GetItemOp)
+        ast = _parser.parse(descriptor.field_expr)
+        if (
+            isinstance(ast, BracketOp)
             and isinstance(ast.left_child, VariableNode)
             and ast.left_child.var_name == feature_names[0]
             and isinstance(ast.right_child, ValueNode)

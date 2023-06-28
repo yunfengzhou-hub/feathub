@@ -18,10 +18,9 @@ from typing import Union, Dict, Sequence, Optional, List
 
 from feathub.common.exceptions import FeathubException
 from feathub.common.utils import from_json, append_metadata_to_json
-from feathub.dsl.ast import VariableNode, GetAttrOp
 from feathub.dsl.expr_parser import ExprParser
-from feathub.dsl.expr_utils import get_variables
-from feathub.feature_views.feature import Feature, _get_join_table_name
+from feathub.dsl.expr_utils import get_variables, is_id, get_join_table_name
+from feathub.feature_views.feature import Feature
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.transforms.expression_transform import ExpressionTransform
 from feathub.feature_views.transforms.join_transform import JoinTransform
@@ -182,11 +181,9 @@ class DerivedFeatureView(FeatureView):
         force_update: bool,
         default_feature_name: str,
     ) -> Feature:
-        ast = _parser.parse(feature_str)
-        join_table_name = _get_join_table_name(ast)
-
-        if isinstance(ast, VariableNode):
-            source_feature = source.get_feature(ast.var_name)
+        parts = feature_str.split(".")
+        if len(parts) == 1 and is_id(parts[0]):
+            source_feature = source.get_feature(parts[0])
             feature = Feature(
                 name=source_feature.name,
                 dtype=source_feature.dtype,
@@ -194,13 +191,9 @@ class DerivedFeatureView(FeatureView):
                 keys=source_feature.keys,
             )
             return feature
-        elif (
-            isinstance(ast, GetAttrOp)
-            and isinstance(ast.left_child, VariableNode)
-            and isinstance(ast.right_child, VariableNode)
-        ):
-            join_table_name = ast.left_child.var_name
-            join_feature_name = ast.right_child.var_name
+        elif len(parts) == 2 and is_id(parts[0]) and is_id(parts[1]):
+            join_table_name = parts[0]
+            join_feature_name = parts[1]
             table_desc = registry.get_features(
                 name=join_table_name, force_update=force_update
             )
@@ -216,7 +209,10 @@ class DerivedFeatureView(FeatureView):
                 transform=JoinTransform(join_table_name, join_feature_name),
                 keys=join_feature.keys,
             )
-        elif join_table_name is not None:
+
+        ast = _parser.parse(feature_str)
+        join_table_name = get_join_table_name(ast)
+        if join_table_name is not None:
             table_desc = registry.get_features(
                 name=join_table_name, force_update=force_update
             )

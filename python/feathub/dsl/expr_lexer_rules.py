@@ -19,6 +19,9 @@ from ply.lex import TOKEN
 from feathub.common.exceptions import FeathubExpressionException
 
 
+ID_REGEX = r"[a-zA-Z_][a-zA-Z0-9_]*|`[a-zA-Z_][a-zA-Z0-9_]*`"
+
+
 class ExprLexerRules:
     literals = ["+", "-", "*", "/"]
 
@@ -58,8 +61,8 @@ class ExprLexerRules:
     tokens = [
         "LPAREN",
         "RPAREN",
-        "LSQUAREBR",
-        "RSQUAREBR",
+        "LBRACKET",
+        "RBRACKET",
         "DOT",
         "LT",
         "LE",
@@ -77,8 +80,8 @@ class ExprLexerRules:
     # Regular expression rules for simple tokens
     t_LPAREN = r"\("
     t_RPAREN = r"\)"
-    t_LSQUAREBR = r"\["
-    t_RSQUAREBR = r"\]"
+    t_LBRACKET = r"\["
+    t_RBRACKET = r"\]"
     t_DOT = r"\."
     t_LT = r"<"
     t_LE = r"<="
@@ -102,7 +105,7 @@ class ExprLexerRules:
         t.value = int(t.value)
         return t
 
-    @TOKEN(r"[a-zA-Z_][a-zA-Z0-9_]*|`[a-zA-Z_][a-zA-Z0-9_]*`")
+    @TOKEN(ID_REGEX)
     def t_ID(self, t: lex.LexToken) -> lex.LexToken:
 
         # Do not check the reserved keywords map if the id is surrounded by backticks

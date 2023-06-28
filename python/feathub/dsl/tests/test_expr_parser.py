@@ -23,7 +23,7 @@ from feathub.dsl.ast import (
     NullNode,
     CaseOp,
     CompareOp,
-    GetItemOp,
+    BracketOp,
     GetAttrOp,
     BinaryOp,
 )
@@ -97,15 +97,15 @@ class ExprParserTest(unittest.TestCase):
                 results=[ValueNode(value=1)],
                 default=NullNode(),
             ),
-            "a['key1']": GetItemOp(
+            "a['key1']": BracketOp(
                 left_child=VariableNode(var_name="a"),
                 right_child=ValueNode(value="key1"),
             ),
-            "a[0]": GetItemOp(
+            "a[0]": BracketOp(
                 left_child=VariableNode(var_name="a"),
                 right_child=ValueNode(value=0),
             ),
-            "a[b]": GetItemOp(
+            "a[b]": BracketOp(
                 left_child=VariableNode(var_name="a"),
                 right_child=VariableNode(var_name="b"),
             ),

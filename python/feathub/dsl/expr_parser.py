@@ -33,7 +33,7 @@ from feathub.dsl.ast import (
     CaseOp,
     IsOp,
     NullNode,
-    GetItemOp,
+    BracketOp,
     GetAttrOp,
 )
 from feathub.dsl.expr_lexer_rules import ExprLexerRules
@@ -197,15 +197,15 @@ class ExprParser:
         else:
             p[0] = p[1].case(p[3], p[5])
 
-    def p_expression_get_item_op(self, p: yacc.YaccProduction) -> None:
+    def p_expression_bracket_op(self, p: yacc.YaccProduction) -> None:
         """
-        expression : expression LSQUAREBR expression RSQUAREBR
+        expression : expression LBRACKET expression RBRACKET
         """
-        p[0] = GetItemOp(p[1], p[3])
+        p[0] = BracketOp(p[1], p[3])
 
     def p_expression_get_attr_op(self, p: yacc.YaccProduction) -> None:
         """
-        expression : expression DOT expression
+        expression : expression DOT ID
         """
         p[0] = GetAttrOp(p[1], p[3])
 

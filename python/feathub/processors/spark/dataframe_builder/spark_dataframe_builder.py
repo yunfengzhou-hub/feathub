@@ -16,6 +16,7 @@ from typing import Dict, Tuple, List, Sequence, Union, Optional
 
 import pandas as pd
 
+from feathub.dsl.expr_utils import is_id
 from feathub.feature_views.transforms.join_transform import JoinTransform
 from pyspark.sql import DataFrame as NativeSparkDataFrame, functions
 from pyspark.sql import SparkSession
@@ -270,7 +271,7 @@ class SparkDataFrameBuilder:
 
                 join_transform = feature.transform
 
-                if not join_transform.expr_is_feature_name():
+                if not is_id(join_transform.feature_expr):
                     raise FeathubException(
                         "It is not supported to use Feathub expression in JoinTransform"
                         " for spark processor."

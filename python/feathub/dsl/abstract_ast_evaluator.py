@@ -31,7 +31,7 @@ from feathub.dsl.ast import (
     IsOp,
     NullNode,
     CaseOp,
-    GetItemOp,
+    BracketOp,
     GetAttrOp,
 )
 
@@ -76,8 +76,8 @@ class AbstractAstEvaluator(ABC):
             return self.eval_null_node(ast, variables)
         if isinstance(ast, CaseOp):
             return self.eval_case_op(ast, variables)
-        if isinstance(ast, GetItemOp):
-            return self.eval_get_item_op(ast, variables)
+        if isinstance(ast, BracketOp):
+            return self.eval_bracket_op(ast, variables)
         if isinstance(ast, GetAttrOp):
             return self.eval_get_attr_op(ast, variables)
 
@@ -136,7 +136,7 @@ class AbstractAstEvaluator(ABC):
         pass
 
     @abc.abstractmethod
-    def eval_get_item_op(self, ast: GetItemOp, variables: Optional[Dict]) -> Any:
+    def eval_bracket_op(self, ast: BracketOp, variables: Optional[Dict]) -> Any:
         pass
 
     @abc.abstractmethod

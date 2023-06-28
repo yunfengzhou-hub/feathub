@@ -308,28 +308,28 @@ class IsOp(AbstractBinaryOp):
         }
 
 
-class GetItemOp(AbstractBinaryOp):
+class BracketOp(AbstractBinaryOp):
     def __init__(self, left_child: ExprAST, right_child: ExprAST) -> None:
         super().__init__(
-            node_type="GetItemOp", left_child=left_child, right_child=right_child
+            node_type="BracketOp", left_child=left_child, right_child=right_child
         )
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
-        collection_type = self.left_child.eval_dtype(variable_types)
-        key_type = self.right_child.eval_dtype(variable_types)
+        left_child_type = self.left_child.eval_dtype(variable_types)
+        right_child_type = self.right_child.eval_dtype(variable_types)
 
-        if isinstance(collection_type, MapType):
-            if key_type != collection_type.key_dtype:
+        if isinstance(left_child_type, MapType):
+            if right_child_type != left_child_type.key_dtype:
                 raise FeathubExpressionException(
-                    f"Map key type {collection_type.key_dtype} does not match "
-                    f"with expected {key_type}."
+                    f"Map key type {left_child_type.key_dtype} does not match "
+                    f"with expected {right_child_type}."
                 )
-            return collection_type.value_dtype
+            return left_child_type.value_dtype
 
         # TODO: Support parsing expression based on data types.
-        if isinstance(collection_type, VectorType):
-            # Suppose parsing an expression "a[b]" into Flink SQL. If a is a map, it
-            # should be parsed into "a[b]". If a is a list, it should be parsed into
+        if isinstance(left_child_type, VectorType):
+            # Suppose parsing an expression "a[b]" into Flink SQL. If "a" is a map, it
+            # should be parsed into "a[b]". If "a" is a list, it should be parsed into
             # "a[b + 1]". The parse result depends on the data type, but Feathub
             # has not uniform AbstractAstEvaluator#eval and ExprAST#eval_dtype, so
             # the parsing process cannot get type information yet.
@@ -337,18 +337,18 @@ class GetItemOp(AbstractBinaryOp):
                 "Getting element from list by index is not supported yet."
             )
 
-        raise FeathubExpressionException(f"{key_type} is not subscriptable.")
+        raise FeathubExpressionException(f"{right_child_type} is not subscriptable.")
 
     def to_json(self) -> Dict:
         return {
-            "node_type": "GetItemOp",
+            "node_type": "BracketOp",
             "left_child": self.left_child.to_json(),
             "right_child": self.right_child.to_json(),
         }
 
 
 class GetAttrOp(AbstractBinaryOp):
-    def __init__(self, left_child: ExprAST, right_child: ExprAST) -> None:
+    def __init__(self, left_child: VariableNode, right_child: ExprAST) -> None:
         super().__init__(
             node_type="GetAttrOp", left_child=left_child, right_child=right_child
         )
@@ -359,12 +359,12 @@ class GetAttrOp(AbstractBinaryOp):
             )
 
     def eval_dtype(self, variable_types: Dict[str, DType]) -> DType:
-        table_name = typing.cast(VariableNode, self.left_child).var_name
-        prefix_index = len(table_name) + 1
+        variable_name_prefix = typing.cast(VariableNode, self.left_child).var_name
+        prefix_index = len(variable_name_prefix) + 1
         variable_types = {
             key[prefix_index:]: value
             for key, value in variable_types.items()
-            if key.startswith(table_name)
+            if key.startswith(variable_name_prefix)
         }
         return self.right_child.eval_dtype(variable_types)
 

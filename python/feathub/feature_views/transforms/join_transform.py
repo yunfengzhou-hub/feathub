@@ -14,10 +14,8 @@
 from typing import Dict
 
 from feathub.common.utils import append_metadata_to_json
-from feathub.dsl.ast import VariableNode
 from feathub.dsl.expr_parser import ExprParser
 from feathub.feature_views.transforms.transformation import Transformation
-
 
 _parser = ExprParser()
 
@@ -30,24 +28,15 @@ class JoinTransform(Transformation):
     def __init__(
         self,
         table_name: str,
-        feature_expr: str,
+        expr: str,
     ):
         """
         :param table_name: The name of a Source or FeatureView table.
-        :param feature_expr: The feature expr.
+        :param expr: The feature expr.
         """
         super().__init__()
         self.table_name = table_name
-        self.feature_expr = feature_expr
-
-    # TODO: remove this method after Feathub expression syntax on JoinTransform is
-    #  supported by local/spark processor and online feature service.
-    def expr_is_feature_name(self) -> bool:
-        """
-        Returns whether the feature expression of this transform is a single
-        feature name.
-        """
-        return isinstance(_parser.parse(self.feature_expr), VariableNode)
+        self.feature_expr = expr
 
     @append_metadata_to_json
     def to_json(self) -> Dict:
@@ -60,5 +49,5 @@ class JoinTransform(Transformation):
     def from_json(cls, json_dict: Dict) -> "JoinTransform":
         return JoinTransform(
             table_name=json_dict["table_name"],
-            feature_expr=json_dict["feature_expr"],
+            expr=json_dict["feature_expr"],
         )

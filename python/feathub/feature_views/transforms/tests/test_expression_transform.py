@@ -527,7 +527,7 @@ class ExpressionTransformITTest(ABC, FeathubITTestBase):
         result_df = self.client.get_features(feature_view_1).to_pandas()
         self.assertTrue(expected_result_df.equals(result_df))
 
-    def test_get_item(self):
+    def test_bracket(self):
         input_data = pd.DataFrame(
             [
                 ["Alex", "a", 0],

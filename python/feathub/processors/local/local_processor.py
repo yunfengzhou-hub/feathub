@@ -30,6 +30,7 @@ from feathub.common.config import TIMEZONE_CONFIG
 from feathub.common.exceptions import FeathubException, FeathubTransformationException
 from feathub.common.types import to_numpy_dtype
 from feathub.dsl.expr_parser import ExprParser
+from feathub.dsl.expr_utils import is_id
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_tables.sinks.black_hole_sink import BlackHoleSink
 from feathub.feature_tables.sinks.file_system_sink import FileSystemSink
@@ -465,7 +466,7 @@ class LocalProcessor(Processor):
         if not isinstance(join_transform, JoinTransform):
             raise RuntimeError(f"Feature '{feature.name}' should use JoinTransform.")
 
-        if not join_transform.expr_is_feature_name():
+        if not is_id(join_transform.feature_expr):
             raise FeathubException(
                 "It is not supported to use Feathub expression in JoinTransform for "
                 "local processor."

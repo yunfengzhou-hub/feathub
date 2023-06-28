@@ -16,6 +16,7 @@ import pandas as pd
 from typing import Optional, List, Dict, Union
 
 from feathub.common.exceptions import FeathubException
+from feathub.dsl.expr_utils import is_id
 from feathub.feature_service.feature_service import FeatureService
 from feathub.feature_tables.feature_table import FeatureTable
 from feathub.feature_tables.sources.mysql_source import MySQLSource
@@ -121,7 +122,7 @@ class LocalFeatureService(FeatureService):
         if not isinstance(join_transform, JoinTransform):
             raise RuntimeError(f"Feature '{feature.name}' should use JoinTransform.")
 
-        if not join_transform.expr_is_feature_name():
+        if not is_id(join_transform.feature_expr):
             raise FeathubException(
                 "It is not supported to use Feathub expression in JoinTransform when "
                 "getting online features."
