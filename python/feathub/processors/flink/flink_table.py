@@ -68,6 +68,7 @@ def flink_table_to_pandas(table: NativeFlinkTable) -> pd.DataFrame:
         for name in field_names
         if type(schema.get_field_data_type(name)) in FLINK_DATA_TYPE_TO_NUMPY_TYPE
     }
+    table.print_schema()
     with table.execute().collect() as results:
         data: Dict[str, List[Any]] = defaultdict(list)
         for row in results:

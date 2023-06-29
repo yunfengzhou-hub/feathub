@@ -12,9 +12,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from datetime import timedelta
-from typing import Any, Tuple
+from typing import Any, Tuple, cast
 
-from pyflink.table.types import DataType, DataTypes
+from pyflink.java_gateway import get_gateway
+from pyflink.table.types import DataType, DataTypes, ArrayType
 
 from feathub.common.exceptions import FeathubException
 from feathub.feature_views.feature import Feature
@@ -23,7 +24,7 @@ from feathub.feature_views.transforms.over_window_transform import OverWindowTra
 from feathub.feature_views.transforms.sliding_window_transform import (
     SlidingWindowTransform,
 )
-from feathub.processors.flink.flink_types_utils import to_flink_type
+from feathub.processors.flink.flink_types_utils import to_flink_type, to_java_type
 from feathub.processors.flink.table_builder.flink_sql_expr_utils import (
     to_flink_sql_expr,
 )
@@ -97,8 +98,13 @@ def get_default_value_and_type(
                 f"{type(agg_descriptor.field_data_type)}"
             )
     elif agg_descriptor.agg_func == AggFunc.COLLECT_LIST:
-        default_value = []
-        default_type = DataTypes.ARRAY(agg_descriptor.field_data_type)
+        gateway = get_gateway()
+        print(type(agg_descriptor.field_data_type))
+        print(cast(ArrayType, agg_descriptor.field_data_type).element_type)
+        element_type = cast(ArrayType, agg_descriptor.field_data_type).element_type
+        default_value = gateway.new_array(to_java_type(element_type, gateway), 0)
+        # default_value = []
+        # default_type = DataTypes.ARRAY(agg_descriptor.field_data_type)
     else:
         default_value = None
     return (

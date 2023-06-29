@@ -11,8 +11,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Dict, Type, Union
+from typing import Dict, Type, Union, Callable, Any
 
+from py4j.java_gateway import JavaGateway, JavaClass
 from pyflink.table import DataTypes, Schema as NativeFlinkSchema, TableSchema
 from pyflink.table.types import (
     DataType,
@@ -40,6 +41,21 @@ type_mapping: Dict[BasicDType, AtomicType] = {
 inverse_type_mapping: Dict[Type[AtomicType], BasicDType] = {
     type(atomic_type): basic_type for basic_type, atomic_type in type_mapping.items()
 }
+
+java_type_mapping: Dict[BasicDType, Callable[[Any], Any]] = {
+    BasicDType.BYTES: lambda gateway: _raise(FeathubTypeException()),
+    BasicDType.STRING: lambda gateway: gateway.jvm.java.lang.String,
+    BasicDType.INT32: lambda gateway: gateway.jvm.java.lang.Integer,
+    BasicDType.INT64: lambda gateway: gateway.jvm.java.lang.Long,
+    BasicDType.FLOAT32: lambda gateway: gateway.jvm.java.lang.Float,
+    BasicDType.FLOAT64: lambda gateway: gateway.jvm.java.lang.Double,
+    BasicDType.BOOL: lambda gateway: gateway.jvm.java.lang.Boolean,
+    BasicDType.TIMESTAMP: lambda gateway: _raise(FeathubTypeException()),
+}
+
+
+def _raise(ex):
+    raise ex
 
 
 def to_flink_schema(schema: Schema) -> NativeFlinkSchema:
@@ -116,6 +132,19 @@ def to_flink_sql_type(input_type: Union[DType, DataType]) -> str:
             f"{to_flink_sql_type(flink_type.value_type)}>"
         )
     return str(flink_type)
+
+
+def to_java_type(flink_type: DataType, gateway: JavaGateway) -> JavaClass:
+    feathub_type = to_feathub_type(flink_type)
+    if not isinstance(feathub_type, PrimitiveType):
+        raise FeathubTypeException()
+    basic_type = feathub_type.basic_dtype
+    if basic_type not in java_type_mapping:
+        raise FeathubTypeException(
+            f"Type {basic_type} is not supported by FlinkProcessor."
+        )
+    print(type(java_type_mapping[basic_type](gateway)))
+    return java_type_mapping[basic_type](gateway)
 
 
 def to_feathub_type(flink_type: DataType) -> DType:

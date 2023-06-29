@@ -14,12 +14,14 @@
 from datetime import timedelta
 from typing import List, Dict, Tuple, Any, Sequence, Optional
 
+from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.java_gateway import get_gateway
 from pyflink.table import (
     Table as NativeFlinkTable,
     expressions as native_flink_expr,
     StreamTableEnvironment,
 )
-from pyflink.table.types import DataType
+from pyflink.table.types import DataType, DataTypes
 
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
@@ -219,6 +221,7 @@ def full_outer_join_on_key_with_default_value(
                                  NULL.
     :return: The joined table.
     """
+    print("full_outer_join_on_key_with_default_value")
     right_aliased = _rename_fields(right, key_fields)
     predicate = _get_join_predicate(left, right_aliased, key_fields)
 
@@ -357,12 +360,14 @@ def _get_join_predicate(
 def _field_with_default_value_if_null(
     field_name: str, field_default_values: Dict[str, Tuple[Any, DataType]]
 ) -> native_flink_expr:
+    print("_field_with_default_value_if_null")
     if (
         field_name not in field_default_values
         or field_default_values[field_name][0] is None
     ):
         return native_flink_expr.col(field_name)
 
+    print("native_flink_expr.if_then_else")
     return native_flink_expr.if_then_else(
         native_flink_expr.col(field_name).is_not_null,
         native_flink_expr.col(field_name),
@@ -370,3 +375,18 @@ def _field_with_default_value_if_null(
             field_default_values[field_name][1]
         ),
     ).alias(field_name)
+
+
+if __name__ == "__main__":
+    env = StreamExecutionEnvironment.get_execution_environment()
+    t_env = StreamTableEnvironment.create(env)
+    table = t_env.from_elements([(1, ), (2, ), (3, )])
+    table.print_schema()
+    table = table.add_or_replace_columns(
+        native_flink_expr.lit([], DataTypes.ARRAY(DataTypes.INT()).not_null())
+    )
+    table = table.add_or_replace_columns(
+        native_flink_expr.lit(get_gateway().new_array(get_gateway().jvm.java.lang.Integer, 0))
+    )
+    table.print_schema()
+    table.execute().print()

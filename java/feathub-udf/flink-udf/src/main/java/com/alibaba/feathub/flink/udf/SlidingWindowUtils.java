@@ -409,7 +409,9 @@ public class SlidingWindowUtils {
                 case DOUBLE:
                     break;
                 case ARRAY:
-                    zeroValuedRow.setField(fieldName, ((List<?>) zeroValue).toArray());
+                    // zeroValuedRow.setField(fieldName, Collections.EMPTY_LIST);
+                    //                    zeroValuedRow.setField(fieldName, ((List<?>)
+                    // zeroValue).toArray());
                     break;
                 case BIGINT:
                     if (zeroValue instanceof Long) {
