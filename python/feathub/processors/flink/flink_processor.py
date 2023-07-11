@@ -33,6 +33,7 @@ from feathub.common.exceptions import (
 from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sql_feature_view import SqlFeatureView
 from feathub.feature_views.transforms.join_transform import JoinTransform
+from feathub.metric_stores.metric_store import MetricStore
 from feathub.processors.flink.flink_class_loader_utils import (
     ClassLoader,
     get_flink_context_class_loader,
@@ -52,6 +53,10 @@ from feathub.processors.flink.job_submitter.flink_session_cluster_job_submitter 
 )
 from feathub.processors.flink.table_builder.flink_table_builder import (
     FlinkTableBuilder,
+)
+from feathub.processors.flink.table_builder.metric_store_utils import (
+    get_metrics_view,
+    get_metrics_sink,
 )
 from feathub.processors.processor import (
     Processor,
@@ -97,7 +102,12 @@ class FlinkProcessor(Processor):
                                 the Kubernetes cluster. Default to "~/.kube/config".
     """
 
-    def __init__(self, props: Dict, registry: Registry) -> None:
+    def __init__(
+        self,
+        props: Dict,
+        registry: Registry,
+        metric_store: Optional[MetricStore] = None,
+    ) -> None:
         """
         Instantiate the FlinkProcessor.
 
@@ -107,6 +117,7 @@ class FlinkProcessor(Processor):
         super().__init__()
         self.config = FlinkProcessorConfig(props)
         self.registry = registry
+        self.metric_store = metric_store
 
         try:
             self.deployment_mode = DeploymentMode(
@@ -232,6 +243,23 @@ class FlinkProcessor(Processor):
                 # Get the tables to join in order to compute the feature if we are using
                 # a local registry.
                 join_tables.update(self._get_join_tables(resolved_feature_descriptor))
+
+            metrics = []
+            for feature in resolved_feature_descriptor.get_output_features():
+                metrics.extend(feature.metrics)
+            if self.metric_store is not None and metrics:
+                resolved_materialization_descriptor.append(
+                    MaterializationDescriptor(
+                        feature_descriptor=get_metrics_view(
+                            resolved_feature_descriptor
+                        ),
+                        sink=get_metrics_sink(self.metric_store),
+                        ttl=materialization_descriptor.ttl,
+                        start_datetime=materialization_descriptor.start_datetime,
+                        end_datetime=materialization_descriptor.end_datetime,
+                        allow_overwrite=materialization_descriptor.allow_overwrite,
+                    )
+                )
 
         return self.flink_job_submitter.submit(
             materialization_descriptors=resolved_materialization_descriptor,
