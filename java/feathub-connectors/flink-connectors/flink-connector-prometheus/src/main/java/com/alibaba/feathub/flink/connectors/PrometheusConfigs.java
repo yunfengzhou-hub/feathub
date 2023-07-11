@@ -52,7 +52,7 @@ public class PrometheusConfigs {
                     .stringType()
                     .defaultValue("")
                     .withDescription(
-                            "Specifies the grouping key which is the group and global labels of all metrics pushed by this sink. "
+                            "Specifies the grouping keys which are the group and global labels of all metrics pushed by this sink. "
                                     + "The label name and value are separated by '=', and labels are separated by ';', "
                                     + "e.g., k1=v1;k2=v2. Please ensure that your grouping key meets the "
                                     + "Prometheus requirements.");

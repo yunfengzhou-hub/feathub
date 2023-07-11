@@ -274,12 +274,9 @@ public class PrometheusSinkFunction extends RichSinkFunction<RowData> {
 
                 String labelKey = kv.substring(0, idx);
                 String labelValue = kv.substring(idx + 1);
-                if (StringUtils.isNullOrWhitespaceOnly(labelKey)
-                        || StringUtils.isNullOrWhitespaceOnly(labelValue)) {
+                if (StringUtils.isNullOrWhitespaceOnly(labelKey)) {
                     throw new RuntimeException(
-                            String.format(
-                                    "Invalid groupingKey {labelKey:%s, labelValue:%s} must not be empty",
-                                    labelKey, labelValue));
+                            String.format("GroupingKey %s must not be empty", labelKey));
                 }
                 groupingKey.put(labelKey, labelValue);
             }

@@ -169,7 +169,7 @@ public class PrometheusSinkITTest extends PrometheusTableTestBase {
                                         Schema.newBuilder()
                                                 .column("tinyint_val", DataTypes.TINYINT())
                                                 .withComment(
-                                                        "{\"metric_name\":\"tinyint_metric\",\"value_type\":\"tinyint\"}")
+                                                        "{\"k3\":\"v2\",\"metric_name\":\"tinyint_metric\",\"value_type\":\"tinyint\"}")
                                                 .column("smallint_val", DataTypes.SMALLINT())
                                                 .withComment(
                                                         "{\"metric_name\":\"smallint_metric\",\"value_type\":\"smallint\"}")
@@ -201,6 +201,7 @@ public class PrometheusSinkITTest extends PrometheusTableTestBase {
         tableLabels.put("k1", "\"v1\"");
         tableLabels.put("k2", "\"v2\"");
 
+        System.out.println(metrics.get("tinyint_metric").get(0));
         checkMetric(
                 metrics.get("tinyint_metric").get(0),
                 "tinyint_metric",
