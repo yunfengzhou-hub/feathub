@@ -189,6 +189,7 @@ class FlinkTableBuilder:
         end_datetime: Optional[datetime] = None,
     ) -> NativeFlinkTable:
         if isinstance(features, FeatureView) and features.is_unresolved():
+            features.is_unresolved()
             raise FeathubException(
                 "Trying to convert an unresolved FeatureView to native Flink table."
             )
