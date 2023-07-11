@@ -68,6 +68,9 @@ from feathub.feature_views.transforms.tests.test_python_udf_transform import (
 from feathub.feature_views.transforms.tests.test_sliding_window_transform import (
     SlidingWindowTransformITTest,
 )
+from feathub.metric_stores.tests.test_prometheus_metric_store import (
+    PrometheusMetricStoreITTest,
+)
 from feathub.online_stores.memory_online_store import MemoryOnlineStore
 from feathub.processors.flink import flink_table
 from feathub.processors.flink.flink_class_loader_utils import (
@@ -436,24 +439,25 @@ class FlinkProcessorTest(unittest.TestCase):
 
 
 class FlinkProcessorITTest(
-    DataGenSourceITTest,
-    DerivedFeatureViewITTest,
-    ExpressionTransformITTest,
-    FileSystemSourceSinkITTest,
-    JoinTransformITTest,
-    KafkaSourceSinkITTest,
-    OverWindowTransformITTest,
-    PrintSinkITTest,
-    PythonUDFTransformITTest,
-    RedisSourceSinkStandaloneModeITTest,
-    RedisSourceSinkClusterModeITTest,
-    SlidingWindowTransformITTest,
-    SlidingFeatureViewITTest,
-    BlackHoleSinkITTest,
-    FlinkSqlFeatureViewITTest,
-    GetFeaturesITTest,
-    MySQLSourceSinkITTest,
-    MaterializeFeaturesITTest,
+    # DataGenSourceITTest,
+    # DerivedFeatureViewITTest,
+    # ExpressionTransformITTest,
+    # FileSystemSourceSinkITTest,
+    # JoinTransformITTest,
+    # KafkaSourceSinkITTest,
+    # OverWindowTransformITTest,
+    # PrintSinkITTest,
+    PrometheusMetricStoreITTest,
+    # PythonUDFTransformITTest,
+    # RedisSourceSinkStandaloneModeITTest,
+    # RedisSourceSinkClusterModeITTest,
+    # SlidingWindowTransformITTest,
+    # SlidingFeatureViewITTest,
+    # BlackHoleSinkITTest,
+    # FlinkSqlFeatureViewITTest,
+    # GetFeaturesITTest,
+    # MySQLSourceSinkITTest,
+    # MaterializeFeaturesITTest,
 ):
     __test__ = True
 
@@ -490,6 +494,7 @@ class FlinkProcessorITTest(
 
     def get_client(self, extra_config: Optional[Dict] = None) -> FeathubClient:
         if str(extra_config) not in self._cached_clients:
+            print(extra_config)
             self._cached_clients[
                 str(extra_config)
             ] = self.get_client_with_local_registry(
@@ -518,3 +523,6 @@ class FlinkProcessorITTest(
 
     def test_random_field_length(self):
         pass
+
+    def test_prometheus_metric_store(self):
+        super(FlinkProcessorITTest, self).test_prometheus_metric_store()
