@@ -142,6 +142,7 @@ public class PrometheusSinkFunction extends RichSinkFunction<RowData> {
         for (final ColumnInfo columnInfo : this.columnInfos) {
             metricUpdaters.add(columnInfo.getMetricWrapper(registry));
         }
+        System.out.println("open " + getRuntimeContext().getIndexOfThisSubtask());
     }
 
     @Override
