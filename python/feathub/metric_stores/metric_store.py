@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+import logging
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from typing import Dict, List, Optional, OrderedDict, Tuple, Sequence
@@ -51,6 +52,7 @@ class MetricStore(ABC):
         :param config: The metric store configuration.
         """
         self._metric_store_config = MetricStoreConfig(config)
+        self.log = logging.getLogger(__file__)
 
     @staticmethod
     def instantiate(props: Dict) -> Optional["MetricStore"]:
@@ -101,11 +103,23 @@ class MetricStore(ABC):
         if not isinstance(feature_descriptor, FeatureView):
             return []
 
+        metric_logs = [f"Reporting the following metrics to {self.__class__}:"]
         descriptors = []
         window_sizes = set()
         for feature in feature_descriptor.get_resolved_features():
             for metric in feature.metrics:
+                metric_name = self._get_metric_name(metric, feature)
+                metric_tags = self._get_metric_tags(metric, feature, data_sink)
+                metric_tags_str = ",".join(
+                    f"{k}={self._escape_tag_value_str(v)}"
+                    for k, v in metric_tags.items()
+                )
+                metric_logs.append(f"{metric_name}{{{metric_tags_str}}}")
                 window_sizes.add(metric.window_size)
+
+        if window_sizes:
+            self.log.debug(" \t\n".join(metric_logs) + "\n")
+
         for window_size in window_sizes:
             descriptors.append(
                 MaterializationDescriptor(
