@@ -89,66 +89,66 @@ class PrometheusMetricStoreITTest(ABC, FeathubITTestBase):
             grouping_key={"table_name": ""},
         )
 
-    # def test_prometheus_metric_store(self):
-    #     self._test_prometheus_metric_store(
-    #         [
-    #             Count(
-    #                 window_size=timedelta(days=1),
-    #             ),
-    #         ]
-    #     )
-    #
-    # def test_prometheus_metric_store_with_same_metric_name(self):
-    #     self._test_prometheus_metric_store(
-    #         [
-    #             Count(
-    #                 window_size=timedelta(days=1),
-    #             ),
-    #             Count(
-    #                 filter_expr="> 0",
-    #                 window_size=timedelta(days=1),
-    #             ),
-    #         ]
-    #     )
-    #
-    # def test_prometheus_metric_store_with_different_window_size(self):
-    #     self._test_prometheus_metric_store(
-    #         [
-    #             Count(
-    #                 filter_expr="> 0",
-    #                 window_size=timedelta(days=1),
-    #             ),
-    #             Ratio(
-    #                 filter_expr="> 0",
-    #                 window_size=timedelta(days=2),
-    #             ),
-    #         ]
-    #     )
-    #
-    # def test_prometheus_metric_store_escape_characters(self):
-    #     self._test_prometheus_metric_store(
-    #         [
-    #             Count(
-    #                 filter_expr="> 0 AND name <> 'a,b'",
-    #                 window_size=timedelta(days=1),
-    #             ),
-    #         ]
-    #     )
-    #
-    # def test_prometheus_metric_store_zero_window_size(self):
-    #     self._test_prometheus_metric_store(
-    #         [
-    #             Count(
-    #                 filter_expr="> 0",
-    #                 window_size=timedelta(seconds=0),
-    #             ),
-    #             Ratio(
-    #                 filter_expr="> 0",
-    #                 window_size=timedelta(seconds=0),
-    #             ),
-    #         ],
-    #         {"count": "8", "ratio": "0.7272727272727273"},
-    #     )
+    def test_prometheus_metric_store(self):
+        self._test_prometheus_metric_store(
+            [
+                Count(
+                    window_size=timedelta(days=1),
+                ),
+            ]
+        )
+
+    def test_prometheus_metric_store_with_same_metric_name(self):
+        self._test_prometheus_metric_store(
+            [
+                Count(
+                    window_size=timedelta(days=1),
+                ),
+                Count(
+                    filter_expr="> 0",
+                    window_size=timedelta(days=1),
+                ),
+            ]
+        )
+
+    def test_prometheus_metric_store_with_different_window_size(self):
+        self._test_prometheus_metric_store(
+            [
+                Count(
+                    filter_expr="> 0",
+                    window_size=timedelta(days=1),
+                ),
+                Ratio(
+                    filter_expr="> 0",
+                    window_size=timedelta(days=2),
+                ),
+            ]
+        )
+
+    def test_prometheus_metric_store_escape_characters(self):
+        self._test_prometheus_metric_store(
+            [
+                Count(
+                    filter_expr="> 0 AND name <> 'a,b'",
+                    window_size=timedelta(days=1),
+                ),
+            ]
+        )
+
+    def test_prometheus_metric_store_zero_window_size(self):
+        self._test_prometheus_metric_store(
+            [
+                Count(
+                    filter_expr="> 0",
+                    window_size=timedelta(seconds=0),
+                ),
+                Ratio(
+                    filter_expr="> 0",
+                    window_size=timedelta(seconds=0),
+                ),
+            ],
+            {"count": "8", "ratio": "0.7272727272727273"},
+        )
 
     def test_prometheus_metric_store_non_final_metrics(self):
         self._test_prometheus_metric_store(

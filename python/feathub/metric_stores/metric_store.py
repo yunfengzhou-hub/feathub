@@ -98,9 +98,12 @@ class MetricStore(ABC):
                                    materialized.
         :param data_sink: The sink where the feature values will be written to.
         """
+        if not isinstance(feature_descriptor, FeatureView):
+            return []
+
         descriptors = []
         window_sizes = set()
-        for feature in feature_descriptor.get_output_features():
+        for feature in feature_descriptor.get_resolved_features():
             for metric in feature.metrics:
                 window_sizes.add(metric.window_size)
         for window_size in window_sizes:
@@ -136,12 +139,11 @@ class MetricStore(ABC):
             tags[key] = value
         return tags
 
-    # TODO: support treating zero window as infinite window in SlidingWindowTransform
     def _get_metrics_view(
-        self, features_desc: TableDescriptor, data_sink: Sink, window_size: timedelta
-    ) -> TableDescriptor:
+        self, features_desc: FeatureView, data_sink: Sink, window_size: timedelta
+    ) -> FeatureView:
         metric_name_count_dict: Dict[str, int] = dict()
-        for feature in features_desc.get_output_features():
+        for feature in features_desc.get_resolved_features():
             for metric in feature.metrics:
                 if window_size != metric.window_size:
                     continue
