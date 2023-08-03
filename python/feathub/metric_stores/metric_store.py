@@ -21,6 +21,7 @@ from feathub.common.utils import generate_random_name
 from feathub.feature_tables.sinks.sink import Sink
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
+from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
 from feathub.feature_views.transforms.java_udf_transform import JavaUdfTransform
 from feathub.metric_stores.metric import Metric
@@ -96,9 +97,12 @@ class MetricStore(ABC):
                                    materialized.
         :param data_sink: The sink where the feature values will be written to.
         """
+        if not isinstance(feature_descriptor, FeatureView):
+            return []
+
         descriptors = []
         window_sizes = set()
-        for feature in feature_descriptor.get_output_features():
+        for feature in feature_descriptor.get_resolved_features():
             for metric in feature.metrics:
                 window_sizes.add(metric.window_size)
         for window_size in window_sizes:
@@ -109,6 +113,13 @@ class MetricStore(ABC):
                     ),
                     sink=self._get_metrics_sink(data_sink),
                     allow_overwrite=True,
+                )
+            )
+        if feature_descriptor.keep_source_metrics:
+            descriptors.extend(
+                self.create_metric_materialization_descriptors(
+                    feature_descriptor=feature_descriptor.get_resolved_source(),
+                    data_sink=data_sink,
                 )
             )
         return descriptors
@@ -129,12 +140,11 @@ class MetricStore(ABC):
             tags[key] = value
         return tags
 
-    # TODO: support treating zero window as infinite window in SlidingWindowTransform
     def _get_metrics_view(
-        self, features_desc: TableDescriptor, data_sink: Sink, window_size: timedelta
-    ) -> TableDescriptor:
+        self, features_desc: FeatureView, data_sink: Sink, window_size: timedelta
+    ) -> FeatureView:
         metric_name_count_dict: Dict[str, int] = dict()
-        for feature in features_desc.get_output_features():
+        for feature in features_desc.get_resolved_features():
             for metric in feature.metrics:
                 if window_size != metric.window_size:
                     continue
@@ -151,7 +161,7 @@ class MetricStore(ABC):
                 metric_name_mapping_dict[metric_name] = []
 
         metric_features = []
-        for feature in features_desc.get_output_features():
+        for feature in features_desc.get_resolved_features():
             for metric in feature.metrics:
                 if window_size != metric.window_size:
                     continue

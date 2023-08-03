@@ -44,6 +44,31 @@ f_total_cost = Feature(
 )
 ```
 
+Then when the FeatureView that hosts the above feature is being materialized,
+the related metrics will also be reported during the materialization process.
+
+By default, Feathub would only report the metrics directly defined in the
+FeatureView to be materialized. If metrics defined in the source FeatureViews
+should also be reported, please enable the `keep_source_metrics` parameter when
+defining the FeatureView. For example,
+
+```python
+feature_view_1 = SlidingFeatureView(
+    name="feature_view_1",
+    source=source,
+    features=[f_total_cost], # A feature containg metrics.
+)
+
+feature_view_2 = DerivedFeatureView(
+    name="feature_view_2",
+    source=feature_view_1,
+    features=["name"],
+    keep_source_metrics=True, # enable keep_source_metrics here.
+)
+
+self.client.materialize_features(features, sink=...).wait()
+```
+
 ## Metric reporting format
 
 Metrics reported by metric stores will have the following format by default.

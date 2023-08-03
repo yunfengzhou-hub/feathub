@@ -24,6 +24,7 @@ class Sink(FeatureTable, ABC):
     Base class for all Sink Feature Table.
     """
 
+    # TODO: make sure sink subclasses pass in meaningful table name.
     def __init__(
         self,
         name: str,

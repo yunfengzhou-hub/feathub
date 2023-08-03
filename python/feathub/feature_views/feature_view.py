@@ -45,6 +45,7 @@ class FeatureView(TableDescriptor, ABC):
         keep_source_fields: bool = False,
         timestamp_field: Optional[str] = None,
         timestamp_format: str = "epoch",
+        keep_source_metrics: bool = False,
     ):
         """
         :param name: The unique identifier of this feature view in the registry.
@@ -68,11 +69,15 @@ class FeatureView(TableDescriptor, ABC):
                                  `timestamp_format` of the source TableDescriptor is
                                  used as the `timestamp_format` of the TableDescriptor
                                  represented by this FeatureView.
+        :param keep_source_fields: True iff the metrics defined in the source of this
+                                   feature view should also be reported when this
+                                   feature view is materialized into a sink.
         """
 
         self.source = source
         self.features = features
         self.keep_source_fields = keep_source_fields
+        self.keep_source_metrics = keep_source_metrics
 
         is_unresolved = self.is_unresolved()
         keys = None if is_unresolved else self._get_keys()
