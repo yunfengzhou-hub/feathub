@@ -45,6 +45,7 @@ class FeatureView(TableDescriptor, ABC):
         keep_source_fields: bool = False,
         timestamp_field: Optional[str] = None,
         timestamp_format: str = "epoch",
+        keep_source_metrics: bool = False,
     ):
         """
         :param name: The unique identifier of this feature view in the registry.
@@ -73,6 +74,7 @@ class FeatureView(TableDescriptor, ABC):
         self.source = source
         self.features = features
         self.keep_source_fields = keep_source_fields
+        self.keep_source_metrics = keep_source_metrics
 
         is_unresolved = self.is_unresolved()
         keys = None if is_unresolved else self._get_keys()

@@ -18,9 +18,11 @@ from typing import Dict, List, Optional, OrderedDict, Tuple, Sequence
 
 from feathub.common.types import Unknown
 from feathub.common.utils import generate_random_name
+from feathub.feature_tables.sinks.black_hole_sink import BlackHoleSink
 from feathub.feature_tables.sinks.sink import Sink
 from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
+from feathub.feature_views.feature_view import FeatureView
 from feathub.feature_views.sliding_feature_view import SlidingFeatureView
 from feathub.feature_views.transforms.java_udf_transform import JavaUdfTransform
 from feathub.metric_stores.metric import Metric
@@ -111,6 +113,11 @@ class MetricStore(ABC):
                     allow_overwrite=True,
                 )
             )
+        if isinstance(feature_descriptor, FeatureView) and feature_descriptor.keep_source_metrics:
+            descriptors.extend(self.create_metric_materialization_descriptors(
+                feature_descriptor=feature_descriptor.get_resolved_source(),
+                data_sink=BlackHoleSink(),
+            ))
         return descriptors
 
     def _get_metric_name(self, metric: Metric, feature: Feature) -> str:

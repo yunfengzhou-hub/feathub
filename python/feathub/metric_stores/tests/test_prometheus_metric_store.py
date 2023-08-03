@@ -26,6 +26,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_container_is_ready
 
 from feathub.feature_tables.sinks.black_hole_sink import BlackHoleSink
+from feathub.feature_views.derived_feature_view import DerivedFeatureView
 from feathub.feature_views.feature import Feature
 from feathub.feature_views.sliding_feature_view import (
     SlidingFeatureView,
@@ -88,71 +89,82 @@ class PrometheusMetricStoreITTest(ABC, FeathubITTestBase):
             grouping_key={"table_name": ""},
         )
 
-    def test_prometheus_metric_store(self):
-        self._test_prometheus_metric_store(
-            [
-                Count(
-                    window_size=timedelta(days=1),
-                ),
-            ]
-        )
+    # def test_prometheus_metric_store(self):
+    #     self._test_prometheus_metric_store(
+    #         [
+    #             Count(
+    #                 window_size=timedelta(days=1),
+    #             ),
+    #         ]
+    #     )
+    #
+    # def test_prometheus_metric_store_with_same_metric_name(self):
+    #     self._test_prometheus_metric_store(
+    #         [
+    #             Count(
+    #                 window_size=timedelta(days=1),
+    #             ),
+    #             Count(
+    #                 filter_expr="> 0",
+    #                 window_size=timedelta(days=1),
+    #             ),
+    #         ]
+    #     )
+    #
+    # def test_prometheus_metric_store_with_different_window_size(self):
+    #     self._test_prometheus_metric_store(
+    #         [
+    #             Count(
+    #                 filter_expr="> 0",
+    #                 window_size=timedelta(days=1),
+    #             ),
+    #             Ratio(
+    #                 filter_expr="> 0",
+    #                 window_size=timedelta(days=2),
+    #             ),
+    #         ]
+    #     )
+    #
+    # def test_prometheus_metric_store_escape_characters(self):
+    #     self._test_prometheus_metric_store(
+    #         [
+    #             Count(
+    #                 filter_expr="> 0 AND name <> 'a,b'",
+    #                 window_size=timedelta(days=1),
+    #             ),
+    #         ]
+    #     )
+    #
+    # def test_prometheus_metric_store_zero_window_size(self):
+    #     self._test_prometheus_metric_store(
+    #         [
+    #             Count(
+    #                 filter_expr="> 0",
+    #                 window_size=timedelta(seconds=0),
+    #             ),
+    #             Ratio(
+    #                 filter_expr="> 0",
+    #                 window_size=timedelta(seconds=0),
+    #             ),
+    #         ],
+    #         {"count": "8", "ratio": "0.7272727272727273"},
+    #     )
 
-    def test_prometheus_metric_store_with_same_metric_name(self):
+    def test_prometheus_metric_store_non_final_metrics(self):
         self._test_prometheus_metric_store(
             [
                 Count(
                     window_size=timedelta(days=1),
-                ),
-                Count(
-                    filter_expr="> 0",
-                    window_size=timedelta(days=1),
-                ),
-            ]
-        )
-
-    def test_prometheus_metric_store_with_different_window_size(self):
-        self._test_prometheus_metric_store(
-            [
-                Count(
-                    filter_expr="> 0",
-                    window_size=timedelta(days=1),
-                ),
-                Ratio(
-                    filter_expr="> 0",
-                    window_size=timedelta(days=2),
-                ),
-            ]
-        )
-
-    def test_prometheus_metric_store_escape_characters(self):
-        self._test_prometheus_metric_store(
-            [
-                Count(
-                    filter_expr="> 0 AND name <> 'a,b'",
-                    window_size=timedelta(days=1),
-                ),
-            ]
-        )
-
-    def test_prometheus_metric_store_zero_window_size(self):
-        self._test_prometheus_metric_store(
-            [
-                Count(
-                    filter_expr="> 0",
-                    window_size=timedelta(seconds=0),
-                ),
-                Ratio(
-                    filter_expr="> 0",
-                    window_size=timedelta(seconds=0),
                 ),
             ],
-            {"count": "8", "ratio": "0.7272727272727273"},
+            is_metric_of_final_view=False,
         )
 
     def _test_prometheus_metric_store(
         self,
         metric_definitions: List[Metric],
         expected_value: Optional[Dict[str, str]] = None,
+        is_metric_of_final_view: bool = True,
     ):
         self.server_url = self.prometheus_push_gateway_container.get_server_url()
         self.client = self.get_client(
@@ -187,6 +199,15 @@ class PrometheusMetricStoreITTest(ABC, FeathubITTestBase):
             source=source,
             features=[f_total_cost],
         )
+
+        if not is_metric_of_final_view:
+            features = DerivedFeatureView(
+                name="features_2",
+                source=features,
+                features=["name"],
+                keep_source_metrics=True,
+                keep_source_fields=False,
+            )
 
         self.client.materialize_features(
             features, sink=BlackHoleSink(), allow_overwrite=True

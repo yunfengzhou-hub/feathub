@@ -51,6 +51,7 @@ class DerivedFeatureView(FeatureView):
         features: Sequence[Union[str, Feature]],
         keep_source_fields: bool = False,
         filter_expr: Optional[str] = None,
+        keep_source_metrics: bool = False,
     ):
         """
         :param name: The unique identifier of this feature view in the registry.
@@ -101,6 +102,7 @@ class DerivedFeatureView(FeatureView):
             source=source,
             features=features,
             keep_source_fields=keep_source_fields,
+            keep_source_metrics=keep_source_metrics,
         )
         self.filter_expr = filter_expr
 
@@ -158,6 +160,7 @@ class DerivedFeatureView(FeatureView):
             features=features,
             keep_source_fields=self.keep_source_fields,
             filter_expr=self.filter_expr,
+            keep_source_metrics=self.keep_source_metrics,
         )
 
     @staticmethod
@@ -269,6 +272,7 @@ class DerivedFeatureView(FeatureView):
             ],
             "keep_source_fields": self.keep_source_fields,
             "filter_expr": self.filter_expr,
+            "keep_source_metrics": self.keep_source_metrics,
         }
 
     @classmethod
@@ -284,4 +288,5 @@ class DerivedFeatureView(FeatureView):
             ],
             keep_source_fields=json_dict["keep_source_fields"],
             filter_expr=json_dict["filter_expr"],
+            keep_source_metrics=json_dict["keep_source_metrics"],
         )
