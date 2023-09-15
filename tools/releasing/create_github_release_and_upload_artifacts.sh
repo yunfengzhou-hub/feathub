@@ -56,10 +56,10 @@ fi
 
 cd $PROJECT_ROOT
 
-GIT_REMOTE_NAME=`git remote -v | grep "alibaba/feathub" | grep push | cut -d$'\t' -f1`
+GIT_REMOTE_NAME=`git remote -v | grep "yunfengzhou-hub/feathub" | grep push | cut -d$'\t' -f1`
 
 if [[ -z "$GIT_REMOTE_NAME" ]]; then
-    echo "alibaba/feathub is not configured as a remote repository for this directory."
+    echo "yunfengzhou-hub/feathub is not configured as a remote repository for this directory."
     exit 1
 fi
 
@@ -74,7 +74,7 @@ release_id=`
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
-        https://api.github.com/repos/alibaba/feathub/releases \
+        https://api.github.com/repos/yunfengzhou-hub/feathub/releases \
         -d "{\"tag_name\":\"${TAG}\",\"target_commitish\":\"release-${SHORT_RELEASE_VERSION}\",\"name\":\"${TAG}\",\"body\":\"${TAG}\",\"draft\":false,\"prerelease\":true,\"generate_release_notes\":true}" \
     | grep -o 'releases/\d\+\"' \
     | grep -o '\d\+'
@@ -89,7 +89,7 @@ for filename in ${BASE_DIR}/release/*; do
         -H "Authorization: Bearer ${GITHUB_TOKEN}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         -H "Content-Type: application/octet-stream" \
-        "https://uploads.github.com/repos/alibaba/feathub/releases/${release_id}/assets?name=${base_name}" \
+        "https://uploads.github.com/repos/yunfengzhou-hub/feathub/releases/${release_id}/assets?name=${base_name}" \
         --data-binary "@${filename}"
 done
 
